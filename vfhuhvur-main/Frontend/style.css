@@ -1,0 +1,581 @@
+:root {
+    --primary-color: #EAE7DC; /* Основний світлий колір */
+    --secondary-color: #D8C3A5; /* Другий колір - бежевий */
+    --accent-color: #BE8D8A; /* Акцентний колір - рожево-коричневий */
+    --accent-dark: #E98074; /* Темніший акцентний колір */
+    --header-color: #c94c4c; /* Яскравий червоний для хедера */
+    --text-color: #5D5D5D; /* Колір тексту */
+    --card-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+body {
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding-top: 70px;
+    line-height: 1.6;
+}
+
+.navbar {
+    background-color: var(--header-color); /* Яскравий червоний колір */
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    padding: 12px 0;
+}
+
+.logo {
+    height: 50px;   /* висота логотипа */
+    width: auto;    /* ширина автоматично */
+}
+
+.logo-text {
+    font-weight: bold;
+    font-size: 20px;
+    color: #fff;   /* білий текст */
+}
+
+.social-icon {
+    font-size: 1.2rem;
+    margin-left: 15px;
+    color: white;
+    transition: transform 0.3s;
+}
+
+.social-icon:hover {
+    transform: scale(1.2);
+    color: var(--secondary-color);
+}
+
+.hero-section {
+    background: linear-gradient(rgba(234, 231, 220, 0.9), rgba(234, 231, 220, 0.95));
+    background-size: cover;
+    background-position: center;
+    color: var(--text-color);
+    padding: 80px 0;
+    margin-bottom: 40px;
+    text-align: center;
+    border-bottom: 2px solid var(--secondary-color);
+}
+
+.hero-section h1 {
+    color: var(--accent-dark);
+    font-weight: 700;
+    margin-bottom: 25px;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+}
+
+.intro-text {
+    font-size: 1.15rem;
+    line-height: 1.8;
+    max-width: 800px;
+    margin: 0 auto 30px;
+    text-align: center;
+    color: var(--text-color);
+}
+
+/* Спеціальний стиль для цитати */
+.quote-text {
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #e85a4f;
+    text-align: center;
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: var(--primary-color);
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+.divider {
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+    width: 80%;
+    margin: 40px auto;
+    border-radius: 3px;
+}
+
+/* Стилі для плашок з посиланнями */
+.category-links {
+    margin: 50px auto;
+    max-width: 900px;
+}
+
+.category-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 25px;
+    margin-bottom: 20px;
+    background: var(--secondary-color);
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    text-decoration: none;
+    color: var(--text-color);
+    transition: all 0.3s ease;
+    border-left: 5px solid var(--accent-dark);
+}
+
+.category-link:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    color: var(--accent-dark);
+    background-color: rgba(216, 195, 165, 0.8);
+}
+
+.category-title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin: 0;
+    text-align: center;
+    flex-grow: 1;
+    color: var(--text-color);
+}
+
+.category-img {
+    width: 70px;
+    height: 70px;
+    background-color: var(--primary-color);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-color);
+    font-size: 0.9rem;
+    margin-left: 25px;
+    border: 2px dashed var(--accent-color);
+}
+
+.community-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.3s, box-shadow 0.3s;
+    margin: 40px auto;
+    overflow: hidden;
+    max-width: 950px;
+    background: var(--primary-color);
+    border-top: 5px solid var(--accent-dark);
+}
+
+.community-card:hover {
+    transform: translateY(-7px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.12);
+}
+
+.card-header {
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+    color: var(--primary-color);
+    font-weight: 600;
+    border-bottom: none;
+    padding: 25px;
+    text-align: center;
+}
+
+.card-body {
+    padding: 30px;
+    background: var(--primary-color);
+}
+
+.icon-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin: 25px 0;
+}
+
+.icon-item {
+    text-align: center;
+    padding: 15px 10px;
+    border-radius: 10px;
+    background-color: rgba(190, 141, 138, 0.15);
+    transition: all 0.3s;
+    border: 1px solid rgba(190, 141, 138, 0.2);
+}
+
+.icon-item:hover {
+    background-color: rgba(190, 141, 138, 0.25);
+    transform: translateY(-3px);
+}
+
+.icon-item i {
+    font-size: 26px;
+    color: var(--accent-dark);
+    margin-bottom: 10px;
+}
+
+.icon-item div {
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.icon-item.full-width {
+    grid-column: 1 / -1; /* занимает всю ширину контейнера */
+    text-align: center;
+}
+
+.price-tag {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-dark);
+    margin: 25px 0;
+    text-align: center;
+    padding: 15px;
+    background-color: rgba(233, 128, 116, 0.1);
+    border-radius: 10px;
+}
+
+.old-price {
+    text-decoration: line-through;
+    color: var(--accent-color);
+    font-size: 1.1rem;
+    margin-right: 10px;
+}
+
+.btn-join {
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 30px;
+    font-weight: 600;
+    transition: all 0.3s;
+    width: 100%;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 10px rgba(190, 141, 138, 0.3);
+}
+
+.btn-join:hover {
+    background: linear-gradient(135deg, var(--accent-dark), var(--accent-color));
+    transform: translateY(-3px);
+    box-shadow: 0 7px 15px rgba(190, 141, 138, 0.4);
+}
+
+.footer {
+    background: linear-gradient(135deg, var(--header-color), #c94c4c); /* Темніший червоний для футера */
+    color: var(--primary-color);
+    padding: 40px 0 20px;
+    margin-top: 60px;
+    text-align: center;
+}
+
+.slogan {
+    font-size: 1.5rem;
+    font-weight: 300;
+    font-style: italic;
+    text-align: center;
+    margin-bottom: 30px;
+    color: var(--primary-color);
+}
+
+.footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.footer-links a {
+    color: rgba(234, 231, 220, 0.9);
+    text-decoration: none;
+    transition: color 0.3s;
+    font-size: 1rem;
+}
+
+.footer-links a:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.copyright {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(234, 231, 220, 0.3);
+    color: rgba(234, 231, 220, 0.8);
+    font-size: 0.9rem;
+}
+
+h5 {
+    color: var(--accent-dark);
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--secondary-color);
+    display: inline-block;
+}
+
+.terms-body {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    line-height: 1.6;
+    color: var(--text-color);
+}
+
+/* Стилі для модального вікна підтвердження оплати */
+.payment-modal-content {
+    border-radius: 15px;
+    background-color: var(--primary-color);
+}
+
+.payment-modal-header {
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+    color: var(--text-color);
+    border-bottom: none;
+    border-radius: 15px 15px 0 0;
+}
+
+.payment-modal-body {
+    padding: 30px;
+}
+
+.payment-modal-icon {
+    font-size: 48px;
+    color: var(--accent-dark);
+}
+
+.payment-modal-community {
+    color: var(--accent-dark);
+}
+
+.price-display {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--accent-dark);
+    margin: 20px 0;
+}
+
+.payment-alert {
+    background-color: rgba(190, 141, 138, 0.1);
+    border: 1px solid var(--accent-color);
+    border-radius: 10px;
+    color: var(--text-color);
+}
+
+.payment-checkbox {
+    padding-left: 2rem;
+}
+
+.payment-checkbox .form-check-input {
+    transform: scale(1.2);
+    accent-color: var(--accent-dark);
+}
+
+.payment-checkbox .form-check-label {
+    margin-left: 10px;
+    line-height: 1.5;
+    color: var(--text-color);
+}
+
+.payment-checkbox .form-check-label a {
+    color: var(--accent-dark);
+    text-decoration: underline;
+}
+
+.payment-confirm-btn {
+    background: linear-gradient(135deg, #ccc, #999);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    width: 100%;
+    transition: all 0.3s;
+}
+
+.payment-confirm-btn.btn-enabled {
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+}
+
+.payment-confirm-btn.btn-disabled {
+    background: linear-gradient(135deg, #ccc, #999);
+}
+
+/* Стилі для валідації полів */
+.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.phone-input .form-text {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+/* Адаптивність для мобільних пристроїв */
+@media (max-width: 768px) {
+    body {
+        padding-top: 65px;
+    }
+
+    .logo-text {
+        font-size: 1.3rem;
+    }
+
+    .social-icon {
+        font-size: 1.1rem;
+        margin-left: 12px;
+    }
+
+    .hero-section {
+        padding: 60px 0;
+        margin-bottom: 30px;
+    }
+
+    .hero-section h1 {
+        font-size: 2.3rem;
+    }
+
+    .intro-text {
+        font-size: 1.05rem;
+        padding: 0 15px;
+    }
+
+    .quote-text {
+        font-size: 1.8rem;
+        padding: 20px;
+        margin: 30px auto;
+    }
+
+    .category-title {
+        font-size: 1.2rem;
+    }
+
+    .category-img {
+        width: 60px;
+        height: 60px;
+        margin-left: 15px;
+    }
+
+    .card-header h3 {
+        font-size: 1.3rem;
+    }
+
+    .card-header h4 {
+        font-size: 1.2rem;
+    }
+
+    .icon-container {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .icon-item {
+        padding: 12px;
+    }
+
+    .price-tag {
+        font-size: 1.3rem;
+    }
+
+    .slogan {
+        font-size: 1.3rem;
+        padding: 0 15px;
+    }
+
+    .footer-links {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Мобільні стилі для модального вікна */
+    .payment-modal-body {
+        padding: 20px;
+    }
+
+    .price-display {
+        font-size: 1.3rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .navbar-brand {
+        margin-right: 5px;
+    }
+
+    .logo-text {
+        font-size: 1.2rem;
+    }
+
+    .social-icon {
+        font-size: 1rem;
+        margin-left: 10px;
+    }
+
+    .hero-section h1 {
+        font-size: 2rem;
+    }
+
+    .quote-text {
+        font-size: 1.6rem;
+        padding: 15px;
+    }
+
+    .category-link {
+        padding: 20px;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .category-title {
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+
+    .category-img {
+        width: 55px;
+        height: 55px;
+        font-size: 0.8rem;
+        margin-left: 0;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
+    .icon-item {
+        padding: 10px;
+    }
+
+    .icon-item i {
+        font-size: 22px;
+    }
+
+    .icon-item div {
+        font-size: 0.85rem;
+    }
+
+    .btn-join {
+        padding: 12px 25px;
+        font-size: 1rem;
+    }
+
+    .terms-body {
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+        line-height: 1.6;
+        color: var(--text-color);
+    }
+
+    /* Дрібні екрани для модального вікна */
+    .payment-modal-body {
+        padding: 15px;
+    }
+
+    .payment-checkbox {
+        padding-left: 1.5rem;
+    }
+
+    .payment-checkbox .form-check-label {
+        font-size: 0.9rem;
+    }
+}
+#paymentConfirmationModalLabel {
+    color: #EAE7DC !important;
+}

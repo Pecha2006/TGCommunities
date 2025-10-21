@@ -1,0 +1,707 @@
+const TelegramBot = require('node-telegram-bot-api');
+const { Pool } = require('pg');
+require('dotenv').config();
+
+// Токен бота отриманий від @BotFather
+const token = process.env.TELEGRAM_BOT_TOKEN;
+
+// Перевірка токена
+if (!token) {
+    console.log('❌ Токен бота не знайдено! Перевірте .env файл');
+    process.exit(1);
+}
+
+// Підключення до PostgreSQL
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Створюємо екземпляр бота
+const bot = new TelegramBot(token, { 
+    polling: {
+        interval: 300,
+        autoStart: false
+    }
+});
+
+// ID груп для кожної спільноти
+const GROUP_IDS = {
+    nikotin: process.env.NIKOTIN_GROUP_ID,
+    food: process.env.FOOD_GROUP_ID,
+    social: process.env.SOCIAL_GROUP_ID
+};
+
+// Назви спільнот для відображення
+const COMMUNITY_DISPLAY_NAMES = {
+    nikotin: '🚭 Вільні від нікотину',
+    food: '🍎 Вільні від їжі',
+    social: '💪 Вільні від думки інших'
+};
+
+// Ціни для кожної спільноти
+const COMMUNITY_PRICES = {
+    nikotin: 500,
+    food: 400,
+    social: 400
+};
+
+// Функція для перевірки прав бота в групах
+async function checkBotPermissions() {
+    console.log('🔍 Перевірка прав бота в групах...');
+    
+    const botInfo = await bot.getMe();
+    console.log(`🤖 Бот: @${botInfo.username}`);
+    
+    for (const [community, groupId] of Object.entries(GROUP_IDS)) {
+        if (!groupId) {
+            console.error(`❌ Не вказано ID групи для спільноти ${community}`);
+            continue;
+        }
+        
+        try {
+            const chatMember = await bot.getChatMember(groupId, botInfo.id);
+            const chat = await bot.getChat(groupId);
+            
+            console.log(`📍 ${COMMUNITY_DISPLAY_NAMES[community]}:`);
+            console.log(`   Назва: ${chat.title}`);
+            console.log(`   Статус бота: ${chatMember.status}`);
+            console.log(`   ID групи: ${groupId}`);
+            
+            if (chatMember.status !== 'administrator') {
+                console.error(`   ❌ Бот не є адміністратором!`);
+            } else {
+                console.log(`   ✅ Бот є адміністратором`);
+            }
+            
+        } catch (error) {
+            console.error(`❌ Помилка перевірки групи ${community}:`, error.message);
+            console.log(`   ID групи: ${groupId}`);
+        }
+    }
+}
+
+// Основна функція для створення запрошення
+async function createInviteLink(username, community) {
+    try {
+        console.log(`🔔 Створення запрошення для @${username} до спільноти ${community}`);
+
+        const groupId = GROUP_IDS[community];
+        if (!groupId) {
+            console.error(`❌ Не знайдено ID групи для спільноти ${community}`);
+            return {
+                success: false,
+                error: `Не знайдено ID групи для спільноти ${community}`
+            };
+        }
+
+        console.log(`🔄 Створення одноразового посилання для групи ${groupId}...`);
+        
+        // Перевірка чи бот має доступ до групи
+        try {
+            await bot.getChat(groupId);
+        } catch (error) {
+            console.error(`❌ Бот не має доступу до групи ${community}:`, error.message);
+            return {
+                success: false,
+                error: `Бот не має доступу до групи ${community}. Перевірте права адміністратора.`
+            };
+        }
+
+        // Створення одноразового посилання
+        const inviteLink = await bot.createChatInviteLink(groupId, {
+            member_limit: 1,
+            expire_date: Math.floor(Date.now() / 1000) + 86400, // 24 години
+            creates_join_request: false
+        });
+
+        console.log(`✅ Одноразове посилання створено: ${inviteLink.invite_link}`);
+
+        return {
+            success: true,
+            inviteLink: inviteLink.invite_link,
+            message: 'Одноразове посилання створено успішно'
+        };
+
+    } catch (error) {
+        console.error(`❌ Помилка створення запрошення для ${community}:`, error.message);
+        
+        if (error.response && error.response.statusCode === 403) {
+            console.error(`🔒 Бот не має прав адміністратора в групі ${community}`);
+            return {
+                success: false,
+                error: `Бот не має прав адміністратора в групі ${community}. Перевірте налаштування групи.`
+            };
+        }
+        
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// Обробка команди /start
+bot.onText(/\/start/, async (msg) => {
+    const chatId = msg.chat.id;
+    const username = msg.from.username;
+    const userId = msg.from.id;
+
+    console.log(`🔔 Користувач @${username} (ID: ${userId}) запустив бота`);
+
+    if (!username) {
+        await bot.sendMessage(chatId,
+            '❌ У вас не встановлено username в Telegram.\n\n' +
+            'Будь ласка, додайте username в налаштуваннях Telegram та спробуйте знову.'
+        );
+        return;
+    }
+
+    try {
+        // Шукаємо активні підписки користувача
+        const result = await pool.query(
+            `SELECT u.*, p.status as payment_status 
+             FROM users u 
+             LEFT JOIN payments p ON u.id = p.user_id 
+             WHERE (u.telegram_username = $1 OR u.telegram_id = $2) 
+             AND u.active = true AND p.status = 'completed'
+             AND u.expires > NOW()
+             ORDER BY u.joined DESC`,
+            [username.toLowerCase(), userId.toString()]
+        );
+
+        if (result.rows.length > 0) {
+            let message = `🎉 Вітаємо, @${username}!\n\n`;
+            message += `📋 Ваші активні підписки:\n\n`;
+
+            for (const user of result.rows) {
+                const communityName = COMMUNITY_DISPLAY_NAMES[user.community] || user.community;
+                
+                if (user.invite_link) {
+                    message += `✅ ${communityName}\n`;
+                    message += `🔗 Запрошення: ${user.invite_link}\n\n`;
+                } else {
+                    // Якщо посилання немає, створюємо нове
+                    const inviteResult = await createInviteLink(username, user.community);
+                    if (inviteResult.success) {
+                        // Оновлюємо запис в БД
+                        await pool.query(
+                            'UPDATE users SET invite_link = $1 WHERE id = $2',
+                            [inviteResult.inviteLink, user.id]
+                        );
+                        message += `✅ ${communityName}\n`;
+                        message += `🔗 Запрошення: ${inviteResult.inviteLink}\n\n`;
+                    } else {
+                        message += `⚠️ ${communityName} - ${inviteResult.error}\n\n`;
+                    }
+                }
+            }
+
+            message += `📋 Характеристики посилань:\n`;
+            message += `• ⏰ Дійсні 24 години\n`;
+            message += `• 👤 Одноразові (тільки для вас)\n`;
+            message += `• 🔒 Автоматично деактивуються після використання\n\n`;
+            message += `💚 Натисніть на посилання щоб приєднатися до спільноти!`;
+
+            await bot.sendMessage(chatId, message);
+            console.log(`✅ Надіслано запрошення для @${username}`);
+
+        } else {
+            await bot.sendMessage(chatId,
+                `🤖 Вітаю в боті спільнот "Вільні - Залежні"!\n\n` +
+                `📋 Для отримання доступу:\n` +
+                `1. Зареєструйтесь на нашому сайті\n` +
+                `2. Оплатіть підписку на обрану спільноту\n` +
+                `3. Після оплати ви отримаєте персональне запрошення\n\n` +
+                `💡 Після успішної оплати поверніться до бота та введіть /start щоб отримати запрошення.\n\n` +
+                `🏷️ Доступні спільноти:\n` +
+                `• ${COMMUNITY_DISPLAY_NAMES.nikotin} - ${COMMUNITY_PRICES.nikotin} грн/міс\n` +
+                `• ${COMMUNITY_DISPLAY_NAMES.food} - ${COMMUNITY_PRICES.food} грн/міс\n` +
+                `• ${COMMUNITY_DISPLAY_NAMES.social} - ${COMMUNITY_PRICES.social} грн/міс`
+            );
+        }
+    } catch (error) {
+        console.error('❌ Помилка обробки /start:', error);
+        await bot.sendMessage(chatId,
+            '❌ Сталася помилка. Будь ласка, спробуйте пізніше або зверніться до підтримки.'
+        );
+    }
+});
+
+// Обробка команди /help
+bot.onText(/\/help/, async (msg) => {
+    const chatId = msg.chat.id;
+    await bot.sendMessage(chatId,
+        '🆘 Довідка по командам:\n\n' +
+        '/start - отримати запрошення до спільноти (після оплати)\n' +
+        '/check - перевірити статус підписки\n' +
+        '/help - ця довідка\n\n' +
+        '💡 Для реєстрації у спільноті відвідайте наш сайт.'
+    );
+});
+
+// Команда для перевірки статусу підписки
+bot.onText(/\/check/, async (msg) => {
+    const chatId = msg.chat.id;
+    const username = msg.from.username;
+    const userId = msg.from.id;
+
+    if (!username) {
+        await bot.sendMessage(chatId, '❌ У вас не встановлено username в Telegram. Будь ласка, додайте username в налаштуваннях Telegram.');
+        return;
+    }
+
+    try {
+        const result = await pool.query(
+            `SELECT u.*, p.status as payment_status 
+             FROM users u 
+             LEFT JOIN payments p ON u.id = p.user_id 
+             WHERE (u.telegram_username = $1 OR u.telegram_id = $2)
+             ORDER BY u.joined DESC`,
+            [username.toLowerCase(), userId.toString()]
+        );
+
+        if (result.rows.length > 0) {
+            let message = `📊 Статус ваших підписок:\n\n`;
+
+            for (const user of result.rows) {
+                const isActive = user.active && user.expires > new Date();
+                const status = isActive ? 'активна' : 'неактивна';
+                const expires = new Date(user.expires).toLocaleDateString('uk-UA');
+                const communityName = COMMUNITY_DISPLAY_NAMES[user.community] || user.community;
+
+                message += `🏷️ ${communityName}\n`;
+                message += `✅ Статус: ${status}\n`;
+                message += `📅 Дійсна до: ${expires}\n`;
+                message += `💳 Оплата: ${user.payment_status}\n`;
+
+                if (isActive && user.payment_status === 'completed' && user.invite_link) {
+                    message += `🔗 Запрошення: готове (введіть /start)\n`;
+                }
+                message += `\n`;
+            }
+
+            await bot.sendMessage(chatId, message);
+        } else {
+            await bot.sendMessage(chatId,
+                '❌ Вас не знайдено в системі.\n\n' +
+                '💡 Будь ласка, зареєструйтесь на нашому сайті.'
+            );
+        }
+    } catch (error) {
+        console.error('Помилка перевірки статусу:', error);
+        await bot.sendMessage(chatId, '❌ Сталася помилка при перевірці статусу. Спробуйте пізніше.');
+    }
+});
+
+// Функція для автоматичного видалення користувачів з простроченими підписками
+async function cleanupExpiredSubscriptions() {
+    try {
+        console.log('🔄 Перевірка прострочених підписок...');
+        console.log('⏰ Серверний час:', new Date());
+        
+        // Спрощений запит - шукаємо всіх користувачів з простроченими підписками
+        const expiredSubscriptions = await pool.query(
+            `SELECT u.*, p.status as payment_status 
+             FROM users u 
+             LEFT JOIN payments p ON u.id = p.user_id 
+             WHERE u.expires < NOW()
+             AND p.status = 'completed'`
+        );
+
+        console.log(`📋 Знайдено ${expiredSubscriptions.rows.length} прострочених підписок`);
+        
+        for (const user of expiredSubscriptions.rows) {
+            console.log(`🚫 Обробка користувача @${user.telegram_username} з групи ${user.community}`);
+            console.log(`⏰ Час закінчення: ${user.expires}, Telegram ID: ${user.telegram_id}, Активний: ${user.active}`);
+            
+            // Деактивуємо користувача в БД якщо ще активний
+            if (user.active) {
+                await pool.query(
+                    'UPDATE users SET active = false, invite_link = NULL WHERE id = $1',
+                    [user.id]
+                );
+                console.log(`✅ Користувач @${user.telegram_username} деактивований`);
+            }
+            
+            // Видаляємо з групи, якщо є telegram_id
+            if (user.telegram_id) {
+                const groupId = GROUP_IDS[user.community];
+                if (groupId) {
+                    console.log(`🗑️ Спроба видалити з групи: ${user.telegram_id} з ${user.community}`);
+                    const removed = await removeUserFromGroup(user.telegram_id, groupId);
+                    if (removed) {
+                        console.log(`✅ Користувач @${user.telegram_username} успішно видалений з групи`);
+                    }
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error('❌ Помилка очищення підписок:', error);
+    }
+}
+
+
+async function testCleanup() {
+    console.log('🧪 ТЕСТ: Примусова деактивація...');
+    
+    // Знайдемо останнього активного користувача
+    const result = await pool.query(
+        `SELECT * FROM users WHERE active = true ORDER BY id DESC LIMIT 1`
+    );
+    
+    if (result.rows.length > 0) {
+        const user = result.rows[0];
+        console.log(`🧪 Знайдено користувача для тесту: @${user.telegram_username}`);
+        
+        // Примусово встановлюємо прострочений час
+        await pool.query(
+            'UPDATE users SET expires = NOW() - INTERVAL \'1 minute\' WHERE id = $1',
+            [user.id]
+        );
+        console.log('🧪 Встановлено прострочений час');
+        
+        // Чекаємо 5 секунд і запускаємо очищення
+        setTimeout(cleanupExpiredSubscriptions, 5000);
+    } else {
+        console.log('🧪 Не знайдено активних користувачів для тесту');
+    }
+}
+
+// Запустіть тест через 30 секунд після старту
+setTimeout(testCleanup, 30000);
+
+// Функція для видалення користувача з групи
+async function removeUserFromGroup(userId, groupId) {
+    try {
+        console.log(`🔍 Перевірка статусу користувача ${userId} в групі ${groupId}...`);
+        
+        const chatMember = await bot.getChatMember(groupId, userId);
+        
+        if (chatMember.status === 'member' || chatMember.status === 'administrator') {
+            console.log(`🗑️ Видалення користувача ${userId} з групи...`);
+            
+            // Видаляємо користувача
+            await bot.banChatMember(groupId, userId);
+            
+            // Розбанюємо, щоб користувач міг приєднатися знову після оплати
+            setTimeout(async () => {
+                try {
+                    await bot.unbanChatMember(groupId, userId);
+                    console.log(`🔓 Користувач ${userId} розблокований для майбутніх вступів`);
+                } catch (unbanError) {
+                    console.log(`ℹ️ Не вдалося розблокувати користувача ${userId}:`, unbanError.message);
+                }
+            }, 1000);
+            
+            console.log(`✅ Користувач ${userId} успішно видалений з групи`);
+            return true;
+        } else {
+            console.log(`ℹ️ Користувач ${userId} вже не в групі (статус: ${chatMember.status})`);
+            return true;
+        }
+    } catch (error) {
+        if (error.response && error.response.statusCode === 400) {
+            console.log(`ℹ️ Користувач ${userId} не знайдений в групі`);
+            return true;
+        }
+        console.error(`❌ Помилка видалення користувача ${userId}:`, error.message);
+        return false;
+    }
+}
+
+// Функція для автоматичного видалення користувачів з груп
+async function removeExpiredUsersFromGroups() {
+    try {
+        console.log('🔄 Перевірка користувачів для видалення з груп...');
+        
+        // Знаходимо користувачів з простроченими підписками
+        const expiredUsers = await pool.query(
+            `SELECT DISTINCT u.telegram_id, u.telegram_username, u.community 
+             FROM users u 
+             LEFT JOIN payments p ON u.id = p.user_id 
+             WHERE u.active = false 
+             AND p.status = 'completed'
+             AND u.expires < NOW()
+             AND u.telegram_id IS NOT NULL`
+        );
+
+        console.log(`📋 Знайдено ${expiredUsers.rows.length} користувачів для видалення з груп`);
+
+        for (const user of expiredUsers.rows) {
+            const groupId = GROUP_IDS[user.community];
+            if (!groupId) {
+                console.error(`❌ Не знайдено ID групи для спільноти ${user.community}`);
+                continue;
+            }
+
+            console.log(`🚫 Спроба видалити @${user.telegram_username} (ID: ${user.telegram_id}) з групи ${user.community}`);
+
+            // Видаляємо користувача з групи
+            const removed = await removeUserFromGroup(user.telegram_id, groupId);
+            
+            if (removed) {
+                console.log(`✅ Користувач @${user.telegram_username} успішно видалений з групи ${user.community}`);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Помилка видалення користувачів з груп:', error);
+    }
+}
+
+// Додаємо функцію для отримання інформації про користувача
+async function getUserInfo(username) {
+    try {
+        const result = await pool.query(
+            `SELECT u.*, p.status as payment_status 
+             FROM users u 
+             LEFT JOIN payments p ON u.id = p.user_id 
+             WHERE u.telegram_username = $1 AND u.active = true AND p.status = 'completed'
+             AND u.expires > NOW()
+             ORDER BY u.joined DESC LIMIT 1`,
+            [username.toLowerCase()]
+        );
+        return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+        console.error('❌ Помилка отримання інформації про користувача:', error);
+        return null;
+    }
+}
+
+async function debugExpiredUsers() {
+    try {
+        console.log('🔍 ДЕТАЛЬНА ПЕРЕВІРКА СТАНУ:');
+        
+        // Всі користувачі з простроченими підписками
+        const expiredUsers = await pool.query(
+            `SELECT u.telegram_username, u.telegram_id, u.community, u.active, u.expires, p.status as payment_status
+             FROM users u 
+             LEFT JOIN payments p ON u.id = p.user_id 
+             WHERE u.expires < NOW()
+             AND p.status = 'completed'`
+        );
+        
+        console.log(`⏰ Прострочені користувачі: ${expiredUsers.rows.length}`);
+        expiredUsers.rows.forEach(user => {
+            console.log(`   @${user.telegram_username} - ${user.community} - закінчується: ${user.expires} - активний: ${user.active}`);
+        });
+
+        // Всі активні користувачі
+        const activeUsers = await pool.query(
+            `SELECT u.telegram_username, u.telegram_id, u.community, u.active, u.expires, p.status as payment_status
+             FROM users u 
+             LEFT JOIN payments p ON u.id = p.user_id 
+             WHERE u.active = true`
+        );
+        
+        console.log(`👥 Активні користувачі: ${activeUsers.rows.length}`);
+        activeUsers.rows.forEach(user => {
+            const isExpired = new Date(user.expires) < new Date();
+            console.log(`   @${user.telegram_username} - ${user.community} - закінчується: ${user.expires} - ${isExpired ? 'ПРОСТРОЧЕНО' : 'активний'}`);
+        });
+
+    } catch (error) {
+        console.error('❌ Помилка детальної перевірки:', error);
+    }
+}
+
+// Додайте виклик для debug
+setInterval(debugExpiredUsers, 30 * 1000);
+
+// Функція для активації користувача після оплати
+async function activateUserAfterPayment(userId, telegramUsername, community, telegramId) {
+    try {
+        console.log(`🎯 Активація користувача @${telegramUsername}, telegram_id: ${telegramId}`);
+        
+        // Змініть на 2 хвилини для тесту (замість 10 секунд)
+        const expires = new Date();
+        expires.setMinutes(expires.getMinutes() + 2);  // 2 хвилини для тесту
+
+        // Створюємо запрошення
+        const inviteResult = await createInviteLink(telegramUsername, community);
+        
+        let inviteLink = null;
+        if (inviteResult.success) {
+            inviteLink = inviteResult.inviteLink;
+        } else {
+            console.error(`❌ Не вдалося створити запрошення для @${telegramUsername}:`, inviteResult.error);
+        }
+
+        // Оновлюємо користувача
+        const result = await pool.query(
+            `UPDATE users 
+             SET active = true, expires = $1, invite_link = $2, 
+                 telegram_id = $3, updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $4
+             RETURNING *`,
+            [expires, inviteLink, telegramId, userId]
+        );
+        
+        console.log(`✅ Користувач ${telegramUsername} активовано до ${expires}, telegram_id: ${telegramId}`);
+        return inviteLink;
+
+    } catch (error) {
+        console.error('❌ Помилка активації користувача:', error);
+        throw error;
+    }
+}
+
+// Обробка помилок бота
+bot.on('error', (error) => {
+    console.error('❌ Помилка бота:', error);
+});
+
+bot.on('polling_error', (error) => {
+    console.error('❌ Помилка polling:', error);
+    // Автоматичний перезапуск polling при помилці 409
+    if (error.code === 'ETELEGRAM' && error.response && error.response.body && 
+        error.response.body.description.includes('Conflict')) {
+        console.log('🔄 Перезапуск polling через 5 секунд...');
+        setTimeout(() => {
+            bot.stopPolling();
+            setTimeout(() => {
+                startBotPolling();
+            }, 1000);
+        }, 5000);
+    }
+});
+
+// Функція для запуску polling
+function startBotPolling() {
+    bot.startPolling({ 
+        restart: true,
+        params: {
+            timeout: 10
+        }
+    }).then(() => {
+        console.log('✅ Polling бота запущено');
+    }).catch(error => {
+        console.error('❌ Помилка запуску polling:', error);
+    });
+}
+
+// Запускаємо очищення кожні 10 секунд для тесту
+setInterval(cleanupExpiredSubscriptions, 10 * 1000);
+
+// Запускаємо очищення при старті
+setTimeout(cleanupExpiredSubscriptions, 5000);
+
+// Ініціалізація бота
+async function initializeBot() {
+    try {
+        console.log('🤖 Ініціалізація Telegram бота...');
+        
+        // Перевірка прав бота
+        await checkBotPermissions();
+        
+        // Запуск polling
+        startBotPolling();
+        
+        console.log('📍 Бот готовий до роботи');
+        console.log('💡 Команди: /start, /help, /check');
+        console.log('🔗 Режим: одноразові посилання через бота');
+        console.log('🔄 Автоматичне очищення: кожну хвилину (тестовий режим)');
+        console.log('🏷️ Спільноти: нікотин, їжа, соціальна');
+        
+    } catch (error) {
+        console.error('❌ Помилка ініціалізації бота:', error);
+    }
+}
+
+// Команда для отримання Telegram ID
+bot.onText(/\/id/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const username = msg.from.username || 'користувач';
+    const firstName = msg.from.first_name || '';
+    
+    const message = `
+👋 Привіт, ${firstName || username}!
+
+🆔 *Ваш Telegram ID:* \`${userId}\`
+
+💡 *Як використати:*
+1. Скопіюйте цей ID: \`${userId}\`
+2. Відкрийте сайт у браузері: http://localhost:3000
+3. Вставте ID у відповідне поле у формі оплати
+4. Заповніть решту полів та завершіть реєстрацію
+
+📝 *Порада:* Якщо відкриєте сайт через Telegram браузер - все заповниться автоматично!
+    `;
+    
+    await bot.sendMessage(chatId, message, { 
+        parse_mode: 'Markdown'
+    });
+    
+    console.log(`📋 Користувач @${username} запросив свій ID: ${userId}`);
+});
+
+// Обробка deep link для автоматизації
+bot.onText(/\/start get_id_(.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const username = msg.from.username || 'користувач';
+    const originalUrl = decodeURIComponent(match[1]);
+    
+    // Додаємо telegram_id до URL
+    const returnUrl = `${originalUrl}${originalUrl.includes('?') ? '&' : '?'}tg_id=${userId}`;
+    
+    const message = `
+✅ *Ваш Telegram ID:* \`${userId}\`
+
+🔗 *Для продовження реєстрації:*
+1. Відкрийте цей сайт у браузері: http://localhost:3000
+2. Ваш Telegram ID буде автоматично додано до форми
+3. Заповніть решту полів та завершіть реєстрацію
+
+💡 *Порада:* Скопіюйте ваш ID на випадок: \`${userId}\`
+    `;
+    
+    await bot.sendMessage(chatId, message, { 
+        parse_mode: 'Markdown'
+    });
+    
+    console.log(`🔗 Користувач @${username} отримав deep link, ID: ${userId}`);
+});
+
+// Команда /start
+bot.onText(/\/start$/, async (msg) => {
+    const chatId = msg.chat.id;
+    const username = msg.from.username;
+    const userId = msg.from.id;
+    
+    console.log(`🔔 Користувач @${username} (ID: ${userId}) запустив бота`);
+    
+    await bot.sendMessage(chatId,
+        `🤖 Вітаю в боті спільнот "Вільні - Залежні"!\n\n` +
+        `📋 *Доступні команди:*\n` +
+        `/id - отримати ваш Telegram ID\n` +
+        `/start - отримати запрошення до спільноти\n` +
+        `/check - перевірити статус підписки\n` +
+        `/help - довідка\n\n` +
+        `💡 *Для реєстрації у спільноті:*\n` +
+        `1. Відкрийте сайт: http://localhost:3000\n` +
+        `2. Використовуйте /id щоб дізнатись свій Telegram ID\n` +
+        `3. Заповніть форму на сайті\n` +
+        `4. Оплатіть підписку\n` +
+        `5. Після оплати отримаєте запрошення\n\n` +
+        `🚀 *Почніть з команди /id*`,
+        { parse_mode: 'Markdown' }
+    );
+});
+
+// Запускаємо ініціалізацію
+setTimeout(initializeBot, 2000);
+
+// Експортуємо функції для використання в серверній частині
+module.exports = {
+    bot,
+    createInviteLink,
+    removeUserFromGroup,
+    getUserInfo,
+    activateUserAfterPayment,
+    GROUP_IDS,
+    COMMUNITY_DISPLAY_NAMES,
+    COMMUNITY_PRICES
+};

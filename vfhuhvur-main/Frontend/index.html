@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вільні - Залежні</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+<!-- Навігаційна панель -->
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+    <div class="container">
+        <a class="navbar-brand d-flex align-items-center" href="#">
+            <img src="logo1.png" alt="Логотип сайта" class="logo me-2">
+            <span class="logo-text">Вільні - Залежні</span>
+        </a>
+        <div class="ms-auto">
+            <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
+            <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+        </div>
+    </div>
+</nav>
+
+<!-- Головний банер -->
+<div class="hero-section text-center">
+    <div class="container">
+        <h1 class="display-4 fw-bold mb-4">Вільні - Залежні</h1>
+        <p class="intro-text">
+            Цінність цього спілкування полягає у можливості обмінюватись думками, досвідом, емоціями та ідеями, щодо боротьби із залежністю.
+        </p>
+        <p class="intro-text">
+            Отримай спілкування з людьми, які тебе зрозуміють та радо підтримають,
+            адже боротьба із будь-якою залежністю – это складний та тривалий шлях, який легше проходити разом.
+        </p>
+
+        <!-- Спеціальна цитата з потрібним шрифтом -->
+        <div class="quote-text">
+            «Немає нічого неможливого, якщо є бажання і віра в себе.»
+        </div>
+    </div>
+</div>
+
+<!-- Плашки з посиланнями на блоки -->
+<div class="container">
+    <div class="category-links">
+        <a href="#nikotin" class="category-link">
+            <h3 class="category-title">Залежні від нікотину</h3>
+        </a>
+
+        <a href="#food" class="category-link">
+            <h3 class="category-title">Залежні від їжі</h3>
+        </a>
+
+        <a href="#social" class="category-link">
+            <h3 class="category-title">Залежні від думки інших</h3>
+        </a>
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Основний вміст -->
+<div class="container">
+    <!-- Спільнота 1 -->
+    <div id="nikotin" class="community-card">
+        <div class="card-header text-center">
+            <h3 class="mb-0">Вільні – Залежні від нікотину</h3>
+            <h4 class="mb-0">Закрита спільнота в Telegram</h4>
+        </div>
+        <div class="card-body">
+            <h5 class="text-center">З чим приходять:</h5>
+            <div class="icon-container">
+                <div class="icon-item">
+                    <div>Покидав багато разів, але знову повертаюсь</div>
+                </div>
+                <div class="icon-item">
+                    <div>Страшно, навіть, спробувати покинути</div>
+                </div>
+                <div class="icon-item">
+                    <div>Цікавить спілкування з людьми, які шукають свій шлях до звільнення від залежності</div>
+                </div>
+                <div class="icon-item">
+                    <div>Немає підтримки від рідних (можливо, вони втомились від моєї слабкості, або просто не розуміють що це)</div>
+                </div>
+                <div class="icon-item">
+                    <div>Немає кому кричати «Help me!!!» коли накриває момент тяги</div>
+                </div>
+                <div class="icon-item">
+                    <div>Відчуваю вплив залежності на здоров'я, а зупинитися не можу</div>
+                </div>
+                <div class="icon-item full-width">
+                    <div>Хочеться знати, що я не один</div>
+                </div>
+            </div>
+
+            <h5 class="text-center">Що отримують:</h5>
+            <div class="icon-container">
+                <div class="icon-item">
+                    <div>Підтримку в критичні моменти</div>
+                </div>
+                <div class="icon-item">
+                    <div>Спілкування з учасниками групи</div>
+                </div>
+                <div class="icon-item">
+                    <div>Можливість допомогти іншим</div>
+                </div>
+                <div class="icon-item">
+                    <div>Змогу озвучити свої страхи і хвилювання</div>
+                </div>
+                <div class="icon-item">
+                    <div>Нагоду поділитись своїми успіхами у боротьбі</div>
+                </div>
+                <div class="icon-item">
+                    <div>Корисні поради учасників зі свого досвіду</div>
+                </div>
+                <div class="icon-item">
+                    <div>Дізнатись чиюсь успішну історію і надихнутись на боротьбу</div>
+                </div>
+                <div class="icon-item">
+                    <div>Відчуття, що я не один</div>
+                </div>
+                <div class="icon-item full-width">
+                    <div>Можливість говорити про залежність, без сорому розповісти свою історію</div>
+                </div>
+            </div>
+
+            <div class="price-tag">
+                <span class="old-price">700 грн./міс.</span>
+                <span>500 грн./міс.</span>
+            </div>
+            <button class="btn btn-join" onclick="showPaymentConfirmation('nikotin', 500)">Приєднатися</button>
+        </div>
+    </div>
+
+    <!-- Спільнота 2 -->
+    <div id="food" class="community-card">
+        <div class="card-header text-center">
+            <h3 class="mb-0">Вільні – Залежні від їжі</h3>
+            <h4 class="mb-0">Закрита спільнота в Telegram</h4>
+        </div>
+        <div class="card-body">
+            <h5 class="text-center">З чим приходять:</h5>
+            <div class="icon-container">
+                <div class="icon-item">
+                    <div>Неконтрольоване бажання поїсти</div>
+                </div>
+                <div class="icon-item">
+                    <div>Відчуття провини чи стиду після переїдання</div>
+                </div>
+                <div class="icon-item">
+                    <div>Використання їжі, як засобу для зняття стресу</div>
+                </div>
+                <div class="icon-item">
+                    <div>Непереборне бажання до певних продуктів (цукор, жир та ін.)</div>
+                </div>
+                <div class="icon-item">
+                    <div>Продовження вживання не зважаючи на наслідки</div>
+                </div>
+                <div class="icon-item">
+                    <div>Немає з ким поділитись і попросити про допомогу</div>
+                </div>
+            </div>
+
+            <h5 class="text-center">Щo отримують:</h5>
+            <div class="icon-container">
+                <div class="icon-item">
+                    <div>Безпечне середовище, де можна чесно визнати свою залежність та розповісти про неї</div>
+                </div>
+                <div class="icon-item">
+                    <div>Емоційну підтримку від учасників спільноти</div>
+                </div>
+                <div class="icon-item">
+                    <div>Можливість спільної боротьби із залежністю</div>
+                </div>
+                <div class="icon-item">
+                    <div>Відсутність засудження і звинувачень, тільки підтримку</div>
+                </div>
+                <div class="icon-item">
+                    <div>Нагоду поділитись своїми успіхами</div>
+                </div>
+                <div class="icon-item">
+                    <div>Змогу допомогти інших</div>
+                </div>
+                <div class="icon-item">
+                    <div>Підтримку у критичні моменти</div>
+                </div>
+                <div class="icon-item">
+                    <div>Відчуття, що я не один</div>
+                </div>
+            </div>
+
+            <div class="price-tag">
+                <span class="old-price">600 грн./міс.</span>
+                <span>400 грн./міс.</span>
+            </div>
+            <button class="btn btn-join" onclick="showPaymentConfirmation('food', 400)">Приєднатися</button>
+        </div>
+    </div>
+
+    <!-- Спільнота 3 -->
+    <div id="social" class="community-card">
+        <div class="card-header text-center">
+            <h3 class="mb-0">Вільні – Залежні від думки інших</h3>
+            <h4 class="mb-0">Закрита спільнота в Telegram</h4>
+        </div>
+        <div class="card-body">
+            <h5 class="text-center">З чим приходять:</h5>
+            <div class="icon-container">
+                <div class="icon-item">
+                    <div>Відчуття невпевненості у разі критики, або якщо мої дії не схвалюють оточуючі</div>
+                </div>
+                <div class="icon-item">
+                    <div>Труднощі у прийнятті рішень</div>
+                </div>
+                <div class="icon-item">
+                    <div>Важко витупати на публіку або брати участь у соціальних заходах</div>
+                </div>
+                <div class="icon-item">
+                    <div>Прагнення відповідати очікуванням інших, жертвуючи своїми бажаннями</div>
+                </div>
+                <div class="icon-item">
+                    <div>Труднощі із прийняттям себе такими, якими ми є</div>
+                </div>
+                <div class="icon-item">
+                    <div>Відсутність підтримки від рідних та оточення</div>
+                </div>
+            </div>
+
+            <h5 class="text-center">Що отримують:</h5>
+            <div class="icon-container">
+                <div class="icon-item">
+                    <div>Простір в якому можна розповісти про свої страхи</div>
+                </div>
+                <div class="icon-item">
+                    <div>Спілкування з учасниками простору</div>
+                </div>
+                <div class="icon-item">
+                    <div>Корисні поради від учасників, щодо розвитку самосвідомості, практикування самостійних рішень, встановлення меж, тощо</div>
+                </div>
+                <div class="icon-item">
+                    <div>Отримати підтримку від учасників спільноти</div>
+                </div>
+                <div class="icon-item">
+                    <div>Можливість поділитись своїми успіхами</div>
+                </div>
+                <div class="icon-item">
+                    <div>Змогу підтримати інших</div>
+                </div>
+            </div>
+            <div class="price-tag">
+                <span class="old-price">600 грн./міс.</span>
+                <span>400 грн./міс.</span>
+            </div>
+            <button class="btn btn-join" onclick="showPaymentConfirmation('social', 400)">Приєднатися</button>
+        </div>
+    </div>
+</div>
+
+<!-- Футер -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-links">
+            <a href="#">Контакти</a>
+            <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Умови участі в спільноті</a>
+        </div>
+        <div class="footer-links">
+            <a href="#">Повернутись на початок</a>
+        </div>
+        <div class="copyright">
+            <p>&copy; 2025 Вільні - Залежні. Всі права захищені.</p>
+        </div>
+    </div>
+</footer>
+
+<!-- Модальне вікно з умовами використання -->
+<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 15px;">
+            <div class="modal-body terms-body">
+                <p><b>1.</b> Допуск до спільноти надається протягом 15-30 хв. з 9.00 год. ранку до 20.00 год. вечора. У разі якщо проплата здійснена за межами вказаного часового проміжку, допуск надається з наступної 9.00 год. ранку протягом 15-30 хв. Відрахунок днів починається з моменту надання допуску до спільноти.</p>
+                <p><b>2.</b> Оплата відбувається за 31 день участі у спільноті. Напередодні закінчення зазначеного терміну, надсилається нагадування про можливість проплати на наступний період. У разі відмови, на 32 день учасник (та його контакти) видаляється зі спільноти, без будь-яких подальших пропозицій, інформаційних листів, рекламных повідомлень.</p>
+                <p><b>3.</b> Обов'язковим є ввічливе спілкування, без переходу на особистості, без хамських коментарів, без насмішок та принижень.</p>
+                <p><b>4.</b> В спільноті не обговорюється війна між росією та Україною, політична ситуація в країні, політичні вподобання, віросповідання, гендерність, сексуальна ідентичність.</p>
+                <p><b>5.</b> Заборонена дискримінація на ґрунті расової або етнічної приналежності.</p>
+                <p><b>6.</b> Заборонено розміщувати будь-яку рекламу, без узгодження з Адміністратором спільноти.</p>
+                <p><b>7.</b> Заборонено надавати будь-які консультації щодо прийому лікарських засобів.</p>
+                <p><b>8.</b> Не розміщуються ніякі посилання на сайти, відео з youtube, tiktok, instagram, facebook, які є у загальному доступі в інтернет-мережі.</p>
+                <p><b>9.</b> Мова спілкування бажано українська, допускається суржик (куди ж без нього), «червоне» слівце може бути прийнятним для вираження емоції.</p>
+                <p><b>10.</b> Дописи та посилання, що суперечать умовам участі у спільноті, видаляються Адміністратором без попередніх обговорень і попереджень.</p>
+                <p><b>11.</b> У разі системного порушення правил, і відсутності реагування на зауваження Адміністратора, учасник видаляється із спільноти без повернення сплачених коштів.</p>
+                <p><b>12.</b> У випадку наміру покинути спільноту раніше сплаченого терміну кошти не повертаються.</p>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--secondary-color);">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальне вікно підтвердження оплати -->
+<div class="modal fade" id="paymentConfirmationModal" tabindex="-1" aria-labelledby="paymentConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content payment-modal-content">
+            <div class="modal-header payment-modal-header">
+                <h5 class="modal-title" id="paymentConfirmationModalLabel">
+                    <i class="fas fa-credit-card me-2"></i>Підтвердження оплати
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body payment-modal-body">
+                <div class="text-center mb-4">
+                    <i class="fas fa-users payment-modal-icon"></i>
+                    <h4 class="mt-3 payment-modal-community" id="communityName">Спільнота</h4>
+                    <div class="price-display">
+                        <span id="finalPrice">500</span> грн./міс.
+                    </div>
+                </div>
+
+                <!-- Поле для Telegram username -->
+                <div class="telegram-input mb-3">
+                    <label for="telegramUsername" class="form-label">Ваш нікнейм в Telegram (без @)</label>
+                    <input type="text" class="form-control" id="telegramUsername" placeholder="username" required>
+                </div>
+
+                <!-- Поле для телефону -->
+                <div class="phone-input mb-3">
+                    <label for="userPhone" class="form-label">Ваш номер телефону</label>
+                    <input type="tel" class="form-control" id="userPhone" placeholder="+380XXXXXXXXX" required>
+                    <div class="form-text">Це необхідно для зв'язку та підтвердження</div>
+                </div>
+
+                <!-- Інформація про Telegram ID -->
+                <div class="telegram-id-info mb-3">
+                    <div class="form-text">
+                        <small>
+                            <i class="fas fa-info-circle me-1"></i>
+                            Для автоматичного заповнення 
+                            <a href="#" onclick="openInTelegram(); return false;" class="text-primary">відкрийте сайт в Telegram</a>
+                            або 
+                            <a href="#" onclick="showTelegramIdHelp(); return false;" class="text-primary">отримайте Telegram ID</a>
+                        </small>
+                    </div>
+                </div>
+
+                <div class="alert alert-info payment-alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Важлива інформація:</strong> Перед оплатою обов'язково ознайомтеся з умовами участі в спільноти.
+                </div>
+
+                <div class="form-check mb-4 payment-checkbox">
+                    <input class="form-check-input" type="checkbox" value="" id="agreeTermsCheckbox">
+                    <label class="form-check-label" for="agreeTermsCheckbox">
+                        Я ознайомився/лась з <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal" onclick="$('#paymentConfirmationModal').modal('hide')">умовами участі в спільноті</a> та погоджуюся з ними
+                    </label>
+                </div>
+
+                <div class="text-center">
+                    <button type="button" class="btn payment-confirm-btn" id="proceedPaymentBtn" onclick="proceedToPayment()" disabled>
+                        <i class="fas fa-lock me-2"></i>Перейти до оплати
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
