@@ -78,10 +78,15 @@ async function activateUserAfterPayment(userId, telegramUsername, community, tel
     try {
         console.log(`🎯 Активація користувача @${telegramUsername}, telegram_id: ${telegramId}`);
         
-        // Для тесту - 10 секунд (замініть на 30 днів для продакшена)
+        // Для тесту - 10 секунд в UTC
         const expires = new Date();
-        expires.setSeconds(expires.getSeconds() + 10);
-
+        expires.setUTCSeconds(expires.getUTCSeconds() + 120);
+        
+        // Використовуємо UTC час явно
+        const expiresUTC = expires.toISOString();
+        
+        console.log(`⏰ Поточний UTC: ${new Date().toISOString()}`);
+        console.log(`⏰ Час закінчення UTC: ${expiresUTC}`);
         // Імпортуємо функцію створення запрошення
         const { createInviteLink } = require('./bot');
         
@@ -95,17 +100,17 @@ async function activateUserAfterPayment(userId, telegramUsername, community, tel
             console.error(`❌ Не вдалося створити запрошення для @${telegramUsername}:`, inviteResult.error);
         }
 
-        // Оновлюємо користувача - ДОДАЄМО telegram_id
-        const result = await pool.query(
+        // Оновлюємо користувача - використовуємо ISO строку (UTC)
+         const result = await pool.query(
             `UPDATE users 
              SET active = true, expires = $1, invite_link = $2, 
                  telegram_id = $3, updated_at = CURRENT_TIMESTAMP 
              WHERE id = $4
              RETURNING *`,
-            [expires, inviteLink, telegramId, userId]
+            [expiresUTC, inviteLink, telegramId, userId] // Використовуємо UTC строку
         );
         
-        console.log(`✅ Користувач ${telegramUsername} активовано до ${expires}, telegram_id: ${telegramId}`);
+        console.log(`✅ Користувач ${telegramUsername} активовано до ${expiresUTC} (UTC), telegram_id: ${telegramId}`);
         return inviteLink;
 
     } catch (error) {
@@ -210,18 +215,20 @@ app.post('/api/users', async (req, res) => {
         }
 
         // Перевіряємо, чи не має користувач вже активної підписки
-        const existingUser = await client.query(
-            `SELECT u.id FROM users u 
-             LEFT JOIN payments p ON u.id = p.user_id 
-             WHERE (u.telegram_username = $1 OR u.telegram_id = $2) AND u.community = $3 
-             AND u.active = true AND p.status = 'completed'
-             AND u.expires > NOW()`,
-            [telegramUsername.toLowerCase(), telegramId, community]
-        );
+const existingUser = await client.query(
+    `SELECT u.id, u.community FROM users u 
+     LEFT JOIN payments p ON u.id = p.user_id 
+     WHERE (u.telegram_username = $1 OR u.telegram_id = $2) 
+     AND u.community = $3
+     AND u.active = true AND p.status = 'completed'
+     AND u.expires > NOW()`,
+    [telegramUsername.toLowerCase(), telegramId, community]
+);
 
-        if (existingUser.rows.length > 0) {
-            throw new Error('У вас вже є активна підписка на цю спільноту');
-        }
+if (existingUser.rows.length > 0) {
+    const communityName = COMMUNITY_DISPLAY_NAMES[community] || community;
+    throw new Error(`У вас вже є активна підписка на спільноту: ${communityName}`);
+}
 
         // Розраховуємо дату закінчення (30 днів)
         const expires = new Date();
