@@ -74,50 +74,61 @@ function generatePortmonePaymentUrl(amount, description, orderNumber) {
 }
 
 // Функція для активації користувача після оплати
-async function activateUserAfterPayment(userId, telegramUsername, community, telegramId) {
+// ============================
+// 🔁 ПРОДОВЖЕННЯ або АКТИВАЦІЯ
+// ============================
+const dayjs = require("dayjs");
+const utc = require("dayjs/plugin/utc");
+dayjs.extend(utc);
+
+const { createInviteLink } = require("./bot");
+
+async function activateOrRenewSubscription(userId, username, community, telegramId) {
     try {
-        console.log(`🎯 Активація користувача @${telegramUsername}, telegram_id: ${telegramId}`);
-        
-        // Для тесту - 10 секунд в UTC
-        const expires = new Date();
-        expires.setUTCSeconds(expires.getUTCSeconds() + 120);
-        
-        // Використовуємо UTC час явно
-        const expiresUTC = expires.toISOString();
-        
-        console.log(`⏰ Поточний UTC: ${new Date().toISOString()}`);
-        console.log(`⏰ Час закінчення UTC: ${expiresUTC}`);
-        // Імпортуємо функцію створення запрошення
-        const { createInviteLink } = require('./bot');
-        
-        // Створюємо запрошення
-        const inviteResult = await createInviteLink(telegramUsername, community);
-        
-        let inviteLink = null;
-        if (inviteResult.success) {
-            inviteLink = inviteResult.inviteLink;
-        } else {
-            console.error(`❌ Не вдалося створити запрошення для @${telegramUsername}:`, inviteResult.error);
+        const { rows } = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        if (!rows.length) {
+            console.log(`❌ Користувача не знайдено: ${userId}`);
+            return null;
         }
 
-        // Оновлюємо користувача - використовуємо ISO строку (UTC)
-         const result = await pool.query(
-            `UPDATE users 
-             SET active = true, expires = $1, invite_link = $2, 
-                 telegram_id = $3, updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $4
-             RETURNING *`,
-            [expiresUTC, inviteLink, telegramId, userId] // Використовуємо UTC строку
-        );
-        
-        console.log(`✅ Користувач ${telegramUsername} активовано до ${expiresUTC} (UTC), telegram_id: ${telegramId}`);
-        return inviteLink;
+        const user = rows[0];
+        const now = dayjs.utc();
+        const currentExpires = user.expires ? dayjs.utc(user.expires) : null;
+        const EXTEND_SEC = 120; // ⏳ тест — продовження на 120 секунд
 
+        // Якщо підписка ще активна → просто продовжуємо
+        if (currentExpires && currentExpires.isAfter(now)) {
+            const newExpires = currentExpires.add(EXTEND_SEC, "second");
+            await pool.query(
+                `UPDATE users 
+         SET expires = $1, active = true, updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $2`,
+                [newExpires.toISOString(), userId]
+            );
+            console.log(`✅ Підписку користувача @${username} продовжено до ${newExpires.toISOString()}`);
+            return { inviteLink: user.invite_link, renewed: true };
+        }
+
+        // Якщо підписка вже минула → створюємо новий інвайт
+        const newExpires = now.add(EXTEND_SEC, "second");
+        const inviteResult = await createInviteLink(username, community);
+        const inviteLink = inviteResult.success ? inviteResult.inviteLink : null;
+
+        await pool.query(
+            `UPDATE users 
+       SET active = true, expires = $1, invite_link = $2, telegram_id = $3, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $4`,
+            [newExpires.toISOString(), inviteLink, telegramId, userId]
+        );
+
+        console.log(`🎟️ Користувача @${username} повторно активовано, нове запрошення: ${inviteLink}`);
+        return { inviteLink, renewed: false };
     } catch (error) {
-        console.error('❌ Помилка активації користувача:', error);
+        console.error("❌ Помилка activateOrRenewSubscription:", error);
         throw error;
     }
 }
+
 
 // Перевірка з'єднання з БД
 app.get('/api/health', async (req, res) => {
@@ -294,82 +305,95 @@ if (existingUser.rows.length > 0) {
 });
 
 // Загальна функція для обробки callback від Portmone
+// ==============================
+// 💳 ОБРОБКА ПІСЛЯ ОПЛАТИ
+// ==============================
 async function handlePaymentCallback(orderNumber, status) {
     const client = await pool.connect();
-    
-    try {
-        await client.query('BEGIN');
 
-        // Знаходимо платіж за номером замовлення
+    try {
+        await client.query("BEGIN");
+
+        // 🔍 Знаходимо платіж та користувача
         const paymentResult = await client.query(
             `SELECT p.*, u.telegram_username, u.community, u.id as user_id, u.telegram_id
-             FROM payments p 
-             JOIN users u ON p.user_id = u.id 
+             FROM payments p
+                      JOIN users u ON p.user_id = u.id
              WHERE p.portmone_id = $1`,
             [orderNumber]
         );
 
-        if (paymentResult.rows.length === 0) {
-            throw new Error('Платіж не знайдено: ' + orderNumber);
+        if (!paymentResult.rows.length) {
+            throw new Error("Платіж не знайдено: " + orderNumber);
         }
 
         const payment = paymentResult.rows[0];
-        const username = payment.telegram_username;
-        const community = payment.community;
-        const userId = payment.user_id;
-        const telegramId = payment.telegram_id;
+        const { telegram_username, community, user_id, telegram_id } = payment;
 
-        console.log(`🔍 Обробка платежу для @${username}, telegram_id: ${telegramId}`);
+        console.log(`🔔 Обробка платежу для @${telegram_username} (${community}) → ${status}`);
 
-        if (status === 'success') {
-            // Оновлюємо платіж як успішний
+        if (status === "success") {
+            // ✅ Оновлюємо статус платежу
             await client.query(
-                `UPDATE payments SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                `UPDATE payments
+                 SET status = 'completed', updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $1`,
                 [payment.id]
             );
 
-            // Активуємо користувача та створюємо запрошення
-            const inviteLink = await activateUserAfterPayment(userId, username, community, telegramId);
+            // 🔁 Продовжуємо або повторно активуємо підписку
+            const result = await activateOrRenewSubscription(
+                user_id,
+                telegram_username,
+                community,
+                telegram_id
+            );
 
-            await client.query('COMMIT');
+            await client.query("COMMIT");
 
-            console.log(`✅ Оплата успішна для користувача: @${username}, telegram_id: ${telegramId}`);
+            console.log(
+                result.renewed
+                    ? `🔄 Підписку @${telegram_username} продовжено`
+                    : `🎟️ Підписку @${telegram_username} поновлено (новий інвайт)`
+            );
 
             return {
                 success: true,
-                username,
+                username: telegram_username,
                 community,
                 amount: payment.amount,
-                inviteLink
+                inviteLink: result?.inviteLink || null,
+                renewed: result?.renewed || false,
             };
-
         } else {
-            // Якщо оплата невдала
+            // ❌ Оплата неуспішна
             await client.query(
-                `UPDATE payments SET status = 'failed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                `UPDATE payments
+                 SET status = 'failed', updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $1`,
                 [payment.id]
             );
 
-            await client.query('COMMIT');
+            await client.query("COMMIT");
 
-            console.log(`❌ Оплата невдала для користувача: @${username}`);
+            console.log(`❌ Оплата неуспішна для @${telegram_username}`);
 
             return {
                 success: false,
-                username,
+                username: telegram_username,
                 community,
-                amount: payment.amount
+                amount: payment.amount,
             };
         }
-
     } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('❌ Помилка обробки платежу:', error);
+        await client.query("ROLLBACK");
+        console.error("❌ Помилка handlePaymentCallback:", error);
         throw error;
     } finally {
         client.release();
     }
 }
+
 
 // Callback для обробки результатів оплати від Portmone (GET)
 app.get('/payment-callback', async (req, res) => {
@@ -452,6 +476,13 @@ app.get('/payment-callback', async (req, res) => {
 
         if (result.success) {
             // Сторінка успішної оплати
+            const message = result.renewed
+                ? "✅ Ваша підписка продовжена!"
+                : "🎉 Ваша підписка активована!";
+
+            const description = result.renewed
+                ? "Дякуємо! Ми успішно продовжили термін вашої підписки. Посилання залишилось тим самим."
+                : "Вітаємо з активацією підписки! Нижче — ваше запрошення для приєднання.";
             const responseHtml = `
                 <!DOCTYPE html>
                 <html lang="uk">
@@ -600,8 +631,8 @@ app.get('/payment-callback', async (req, res) => {
                     <div class="success-section">
                         <div class="success-card">
                             <div class="success-icon">🎉</div>
-                            <h1 class="mb-4">Оплата успішна!</h1>
-                            <p class="mb-4">Вітаємо з успішною оплатою!</p>
+                            <h1 class="mb-4">${message}</h1>
+                            <p class="mb-4">${description}</p>
                             
                             <div class="details-card">
                                 <div class="detail-item">

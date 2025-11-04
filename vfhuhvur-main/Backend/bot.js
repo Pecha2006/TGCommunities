@@ -562,50 +562,54 @@ setInterval(debugExpiredUsers, 30 * 1000);
 // Функція для активації користувача після оплати
 async function activateUserAfterPayment(userId, telegramUsername, community, telegramId) {
     try {
-        console.log(`🎯 Активація користувача @${telegramUsername}, telegram_id: ${telegramId}`);
-        
-        // Створюємо час в UTC явно
-        const now = new Date();
-        const expires = new Date(now.getTime() + 30 * 1000); // 30 секунд для тесту
-        
-        // Форсуємо UTC представлення
-        const expiresUTC = new Date(expires.toISOString());
-        
-        console.log(`⏰ Поточний UTC: ${now.toISOString()}`);
-        console.log(`⏰ Час закінчення UTC: ${expiresUTC.toISOString()}`);
+        console.log(`🎯 Активація або продовження користувача @${telegramUsername}`);
 
-        // Створюємо запрошення
-        const inviteResult = await createInviteLink(telegramUsername, community);
-        
-        let inviteLink = null;
-        if (inviteResult.success) {
-            inviteLink = inviteResult.inviteLink;
-        } else {
-            console.error(`❌ Не вдалося створити запрошення для @${telegramUsername}:`, inviteResult.error);
+        // Беремо поточні дані користувача
+        const { rows } = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
+        if (!rows.length) {
+            console.log(`❌ Користувача не знайдено: ${userId}`);
+            return null;
         }
 
-        // Оновлюємо користувача з UTC часом
-        const result = await pool.query(
+        const user = rows[0];
+        const now = new Date();
+        const EXTEND_MS = 120 * 1000; // тест — +120 секунд
+        const currentExpires = user.expires ? new Date(user.expires) : null;
+
+        // Якщо підписка ще активна → просто продовжуємо термін
+        if (currentExpires && currentExpires > now) {
+            const newExpires = new Date(currentExpires.getTime() + EXTEND_MS);
+            await pool.query(
+                `UPDATE users 
+                 SET expires = $1, active = true, updated_at = CURRENT_TIMESTAMP 
+                 WHERE id = $2`,
+                [newExpires.toISOString(), userId]
+            );
+            console.log(`🔁 Підписку @${telegramUsername} продовжено до ${newExpires.toISOString()}`);
+            return { inviteLink: user.invite_link, renewed: true };
+        }
+
+        // Якщо термін минув → створюємо новий інвайт
+        const expires = new Date(now.getTime() + EXTEND_MS);
+        const inviteResult = await createInviteLink(telegramUsername, community);
+        const inviteLink = inviteResult.success ? inviteResult.inviteLink : null;
+
+        await pool.query(
             `UPDATE users 
-             SET active = true, expires = $1, invite_link = $2, 
-                 telegram_id = $3, updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $4
-             RETURNING *`,
-            [expiresUTC, inviteLink, telegramId, userId]
+             SET active = true, expires = $1, invite_link = $2, telegram_id = $3, updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $4`,
+            [expires.toISOString(), inviteLink, telegramId, userId]
         );
-        
-        console.log(`✅ Користувач ${telegramUsername} активовано до ${expiresUTC.toISOString()} (UTC), telegram_id: ${telegramId}`);
-        
-        // Оновлюємо моніторинг
-        setTimeout(monitorActiveUsers, 1000);
-        
-        return inviteLink;
+
+        console.log(`🎟️ Підписку @${telegramUsername} активовано до ${expires.toISOString()}, інвайт: ${inviteLink}`);
+        return { inviteLink, renewed: false };
 
     } catch (error) {
-        console.error('❌ Помилка активації користувача:', error);
+        console.error('❌ Помилка activateUserAfterPayment:', error);
         throw error;
     }
 }
+
 
 // Обробка помилок бота
 bot.on('error', (error) => {
