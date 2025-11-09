@@ -225,12 +225,6 @@ body {
     border-radius: 10px;
 }
 
-.old-price {
-    text-decoration: line-through;
-    color: var(--accent-color);
-    font-size: 1.1rem;
-    margin-right: 10px;
-}
 
 .btn-join {
     background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
@@ -578,4 +572,44 @@ h5 {
 }
 #paymentConfirmationModalLabel {
     color: #EAE7DC !important;
+}
+
+/* Стилі для списку формату спілкування */
+.format-list {
+    list-style: none;
+    counter-reset: format-counter;
+    padding-left: 0;
+}
+
+.format-list li {
+    counter-increment: format-counter;
+    padding: 12px 15px;
+    border-left: 4px solid var(--accent-color);
+    background-color: rgba(190, 141, 138, 0.05);
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.format-list li::before {
+    content: counter(format-counter) ".";
+    font-weight: bold;
+    color: var(--accent-dark);
+    margin-right: 10px;
+    font-size: 1rem;
+}
+
+
+/* Стилі для модального вікна контактів */
+.contact-info p {
+    font-size: 1.1rem;
+    padding: 10px;
+    background-color: rgba(234, 231, 220, 0.5);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-color);
+}
+
+.contact-info strong {
+    color: var(--accent-dark);
 }

@@ -33,6 +33,11 @@ async function getTelegramId() {
     return null;
 }
 
+function openCommunityTerms() {
+    // Показуємо модальне вікно з форматом спілкування
+    const modal = new bootstrap.Modal(document.getElementById('communityFormatModal'));
+    modal.show();
+}
 // Функція для відкриття в Telegram
 function openInTelegram() {
     // Використовуємо поточну URL сторінки
@@ -160,9 +165,9 @@ function showPaymentConfirmation(community, price) {
     
     // Отримуємо назву спільноти для відображення
     const communityNames = {
-        nikotin: '🚭 Вільні від нікотину',
-        food: '🍎 Вільні від їжі',
-        social: '💪 Вільні від думки інших'
+        nikotin: 'Вільні від нікотину',
+        food: 'Вільні від їжі',
+        social: 'Вільні від думки інших'
     };
     
     // Оновлюємо інформацію в модальному вікні
@@ -419,8 +424,30 @@ document.addEventListener('DOMContentLoaded', function() {
         termsCheckbox.addEventListener('change', updatePaymentButton);
     }
     
-    // Плавна прокрутка для навігаційних посилань
+    // Обробник для кнопки "Повернутись на початок"
+    const backToTopLink = document.getElementById('backToTopLink');
+    if (backToTopLink) {
+        backToTopLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
+    
+    // Плавна прокрутка для навігаційних посилань (виключаємо модальні вікна та backToTopLink)
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        // Пропускаємо посилання з data-bs-toggle (модальні вікна)
+        if (anchor.hasAttribute('data-bs-toggle')) {
+            return;
+        }
+        
+        // Пропускаємо посилання "Повернутись на початок" (воно вже обробляється вище)
+        if (anchor.id === 'backToTopLink') {
+            return;
+        }
+        
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
@@ -432,18 +459,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
-    // Додаємо обробник для кнопки "Повернутись на початок"
-    const backToTopBtn = document.querySelector('a[href="#"]');
-    if (backToTopBtn && backToTopBtn.textContent.includes('Повернутись на початок')) {
-        backToTopBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        });
-    }
     
     // Додаємо інформацію про telegram_id для дебагу
     const debugInfo = document.createElement('div');
