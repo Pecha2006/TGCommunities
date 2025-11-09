@@ -19,9 +19,10 @@ async function initDatabase() {
                 phone VARCHAR(20) NOT NULL,
                 community VARCHAR(50) NOT NULL CHECK (community IN ('nikotin', 'food', 'social')),
                 joined TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires TIMESTAMP NOT NULL,
+                expires TIMESTAMPTZ,
                 active BOOLEAN DEFAULT FALSE,
                 invite_link TEXT,
+                expiry_warning_sent BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -52,6 +53,47 @@ async function initDatabase() {
             END $$;
         `);
 
+        // Дозволяємо NULL для expires, якщо обмеження ще активне
+        await client.query(`
+            DO $$
+            BEGIN
+                BEGIN
+                    ALTER TABLE users ALTER COLUMN expires DROP NOT NULL;
+                EXCEPTION
+                    WHEN others THEN NULL;
+                END;
+            END $$;
+        `);
+
+        // Перетворюємо колонку expires у TIMESTAMPTZ, якщо ще не перетворена
+        await client.query(`
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'users'
+                      AND column_name = 'expires'
+                      AND data_type = 'timestamp without time zone'
+                ) THEN
+                    ALTER TABLE users
+                        ALTER COLUMN expires TYPE TIMESTAMPTZ
+                        USING (CASE WHEN expires IS NOT NULL THEN expires AT TIME ZONE 'UTC' ELSE NULL END);
+                END IF;
+            END $$;
+        `);
+
+        // Додаємо колонку expiry_warning_sent, якщо її ще немає
+        await client.query(`
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                              WHERE table_name='users' AND column_name='expiry_warning_sent') THEN
+                    ALTER TABLE users ADD COLUMN expiry_warning_sent BOOLEAN DEFAULT FALSE;
+                    UPDATE users SET expiry_warning_sent = FALSE;
+                END IF;
+            END $$;
+        `);
+
         // Створення індексів для швидкості
         await client.query(`
             CREATE INDEX IF NOT EXISTS idx_users_telegram ON users(telegram_username, telegram_id);
@@ -61,6 +103,8 @@ async function initDatabase() {
             CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
             CREATE INDEX IF NOT EXISTS idx_users_invite_link ON users(invite_link);
             CREATE INDEX IF NOT EXISTS idx_users_community ON users(community);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_unique_subscription ON users(community, telegram_username) WHERE active = true;
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_users_unique_subscription_telegram_id ON users(community, telegram_id) WHERE telegram_id IS NOT NULL AND active = true;
         `);
 
         console.log('✅ Таблиці та індекси успішно створені');

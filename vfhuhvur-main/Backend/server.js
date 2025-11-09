@@ -44,10 +44,10 @@ const PORTMONE_CONFIG = {
 };
 
 // Імпортуємо функції з бота
-const { 
-    COMMUNITY_DISPLAY_NAMES, 
-    COMMUNITY_PRICES
-} = require('./bot');
+const { COMMUNITY_DISPLAY_NAMES, COMMUNITY_PRICES } = require('./config/communities');
+const { activateUserSubscription } = require('./services/subscriptionService');
+
+const { createInviteLink } = require('./bot');
 
 // Функція для генерації URL оплати Portmone
 function generatePortmonePaymentUrl(amount, description, orderNumber) {
@@ -74,44 +74,26 @@ function generatePortmonePaymentUrl(amount, description, orderNumber) {
 }
 
 // Функція для активації користувача після оплати
-async function activateUserAfterPayment(userId, telegramUsername, community, telegramId) {
+async function activateUserAfterPayment(user, dbClient = pool) {
     try {
-        console.log(`🎯 Активація користувача @${telegramUsername}, telegram_id: ${telegramId}`);
-        
-        // Для тесту - 10 секунд в UTC
-        const expires = new Date();
-        expires.setUTCSeconds(expires.getUTCSeconds() + 120);
-        
-        // Використовуємо UTC час явно
-        const expiresUTC = expires.toISOString();
-        
-        console.log(`⏰ Поточний UTC: ${new Date().toISOString()}`);
-        console.log(`⏰ Час закінчення UTC: ${expiresUTC}`);
-        // Імпортуємо функцію створення запрошення
-        const { createInviteLink } = require('./bot');
-        
-        // Створюємо запрошення
-        const inviteResult = await createInviteLink(telegramUsername, community);
-        
-        let inviteLink = null;
-        if (inviteResult.success) {
-            inviteLink = inviteResult.inviteLink;
-        } else {
-            console.error(`❌ Не вдалося створити запрошення для @${telegramUsername}:`, inviteResult.error);
-        }
+        const telegramUsername = user.telegram_username;
+        const community = user.community;
+        const telegramId = user.telegram_id;
 
-        // Оновлюємо користувача - використовуємо ISO строку (UTC)
-         const result = await pool.query(
-            `UPDATE users 
-             SET active = true, expires = $1, invite_link = $2, 
-                 telegram_id = $3, updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $4
-             RETURNING *`,
-            [expiresUTC, inviteLink, telegramId, userId] // Використовуємо UTC строку
-        );
-        
-        console.log(`✅ Користувач ${telegramUsername} активовано до ${expiresUTC} (UTC), telegram_id: ${telegramId}`);
-        return inviteLink;
+        console.log(`🎯 Активація користувача @${telegramUsername}, telegram_id: ${telegramId}`);
+
+        const activationResult = await activateUserSubscription({
+            db: dbClient,
+            user,
+            community,
+            telegramUsername,
+            telegramId,
+            inviteLinkProvider: () => createInviteLink(telegramUsername, community)
+        });
+
+        console.log(`✅ Користувач ${telegramUsername} активовано до ${activationResult.expiresAt.toISOString()} (UTC), telegram_id: ${telegramId}`);
+
+        return activationResult.inviteLink;
 
     } catch (error) {
         console.error('❌ Помилка активації користувача:', error);
@@ -203,81 +185,107 @@ app.post('/api/users', async (req, res) => {
             throw new Error('Всі поля обов\'язкові для заповнення');
         }
 
-        // Детальна перевірка telegram_id
+        if (!COMMUNITY_DISPLAY_NAMES[community]) {
+            throw new Error('Обрана спільнота не підтримується');
+        }
+
+        const normalizedTelegramId = telegramId && telegramId.toString().trim();
+
         console.log('🔍 Перевірка telegram_id:', {
             received: telegramId,
             type: typeof telegramId,
-            isValid: telegramId && /^\d+$/.test(telegramId)
+            isValid: normalizedTelegramId && /^\d+$/.test(normalizedTelegramId)
         });
 
-        if (!telegramId || !/^\d+$/.test(telegramId)) {
+        if (!normalizedTelegramId || !/^\d+$/.test(normalizedTelegramId)) {
             throw new Error('Некоректний Telegram ID. Будь ласка, отримайте коректний Telegram ID.');
         }
 
-        // Перевіряємо, чи не має користувач вже активної підписки
-const existingUser = await client.query(
-    `SELECT u.id, u.community FROM users u 
-     LEFT JOIN payments p ON u.id = p.user_id 
-     WHERE (u.telegram_username = $1 OR u.telegram_id = $2) 
-     AND u.community = $3
-     AND u.active = true AND p.status = 'completed'
-     AND u.expires > NOW()`,
-    [telegramUsername.toLowerCase(), telegramId, community]
-);
+        const normalizedUsername = telegramUsername.trim().toLowerCase();
+        const chargeAmount = Number(amount);
 
-if (existingUser.rows.length > 0) {
-    const communityName = COMMUNITY_DISPLAY_NAMES[community] || community;
-    throw new Error(`У вас вже є активна підписка на спільноту: ${communityName}`);
-}
+        if (!Number.isFinite(chargeAmount) || chargeAmount <= 0) {
+            throw new Error('Некоректна сума оплати');
+        }
 
-        // Розраховуємо дату закінчення (30 днів)
-        const expires = new Date();
-        expires.setDate(expires.getDate() + 30);
+        const expectedAmount = COMMUNITY_PRICES[community];
+        if (Number.isFinite(expectedAmount) && expectedAmount > 0 && chargeAmount !== expectedAmount) {
+            console.warn(`⚠️ Сума оплати ${chargeAmount} не відповідає стандартній для ${community} (${expectedAmount}).`);
+        }
 
-        // Створюємо користувача
-        const userResult = await client.query(
-            `INSERT INTO users (telegram_username, telegram_id, phone, community, expires, active, invite_link)
-             VALUES ($1, $2, $3, $4, $5, $6, $7) 
-             RETURNING *`,
-            [telegramUsername.toLowerCase(), telegramId, userPhone, community, expires, false, null]
+        // Перевіряємо, чи не має користувач вже запису для спільноти
+        const existingUserResult = await client.query(
+            `SELECT * FROM users 
+             WHERE community = $3
+             AND (telegram_username = $1 OR telegram_id = $2)
+             FOR UPDATE`,
+            [normalizedUsername, normalizedTelegramId, community]
         );
 
-        const user = userResult.rows[0];
-        console.log('✅ Користувач створений:', {
+        let user;
+
+        if (existingUserResult.rows.length > 0) {
+            user = existingUserResult.rows[0];
+
+            const needsUpdate =
+                user.telegram_username !== normalizedUsername ||
+                user.telegram_id !== normalizedTelegramId ||
+                user.phone !== userPhone;
+
+            if (needsUpdate) {
+                const updatedUser = await client.query(
+                    `UPDATE users
+                     SET telegram_username = $1,
+                         telegram_id = $2,
+                         phone = $3,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $4
+                     RETURNING *`,
+                    [normalizedUsername, normalizedTelegramId, userPhone, user.id]
+                );
+                user = updatedUser.rows[0];
+            }
+        } else {
+            const userResult = await client.query(
+                `INSERT INTO users (telegram_username, telegram_id, phone, community, expires, active, invite_link)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                 RETURNING *`,
+                [normalizedUsername, normalizedTelegramId, userPhone, community, null, false, null]
+            );
+
+            user = userResult.rows[0];
+        }
+
+        console.log('✅ Користувач створений/оновлений:', {
             id: user.id,
             username: user.telegram_username,
             telegramId: user.telegram_id
         });
 
-        // ... решта коду без змін
-
-        // Генеруємо номер замовлення
         const orderNumber = `order_${Date.now()}_${user.id}`;
 
-        // Створюємо платіж
         const paymentResult = await client.query(
             `INSERT INTO payments (user_id, amount, status, portmone_id)
              VALUES ($1, $2, $3, $4) 
              RETURNING *`,
-            [user.id, amount, 'pending', orderNumber]
+            [user.id, chargeAmount, 'pending', orderNumber]
         );
 
         const payment = paymentResult.rows[0];
         console.log('✅ Платіж створений:', payment.id);
 
-        // Генеруємо URL для Portmone
-        const description = `Місячна підписка: ${COMMUNITY_DISPLAY_NAMES[community]} - @${telegramUsername}`;
-        const paymentUrl = generatePortmonePaymentUrl(amount, description, orderNumber);
+        const description = `Місячна підписка: ${COMMUNITY_DISPLAY_NAMES[community]} - @${normalizedUsername}`;
+        const paymentUrl = generatePortmonePaymentUrl(chargeAmount.toFixed(2), description, orderNumber);
 
         await client.query('COMMIT');
 
-        console.log('💰 Перенаправляємо на Portmone для користувача:', telegramUsername);
+        console.log('💰 Перенаправляємо на Portmone для користувача:', normalizedUsername);
 
         res.json({
             success: true,
-            user: user,
-            payment: payment,
-            paymentUrl: paymentUrl,
+            user,
+            payment,
+            paymentUrl,
             message: 'Перенаправлення на оплату'
         });
 
@@ -302,7 +310,7 @@ async function handlePaymentCallback(orderNumber, status) {
 
         // Знаходимо платіж за номером замовлення
         const paymentResult = await client.query(
-            `SELECT p.*, u.telegram_username, u.community, u.id as user_id, u.telegram_id
+            `SELECT p.*, u.telegram_username, u.community, u.id as user_id, u.telegram_id, u.invite_link
              FROM payments p 
              JOIN users u ON p.user_id = u.id 
              WHERE p.portmone_id = $1`,
@@ -322,14 +330,46 @@ async function handlePaymentCallback(orderNumber, status) {
         console.log(`🔍 Обробка платежу для @${username}, telegram_id: ${telegramId}`);
 
         if (status === 'success') {
+            if (payment.status === 'completed') {
+                const latestUser = await client.query(
+                    `SELECT invite_link
+                     FROM users
+                     WHERE id = $1
+                     LIMIT 1`,
+                    [userId]
+                );
+                const existingInvite = latestUser.rows[0] ? latestUser.rows[0].invite_link : payment.invite_link || null;
+                console.log(`ℹ️ Платіж ${orderNumber} вже оброблено раніше. Пропускаємо повторну активацію.`);
+                await client.query('COMMIT');
+                return {
+                    success: true,
+                    username,
+                    community,
+                    amount: payment.amount,
+                    inviteLink: existingInvite
+                };
+            }
+
             // Оновлюємо платіж як успішний
             await client.query(
                 `UPDATE payments SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
                 [payment.id]
             );
 
-            // Активуємо користувача та створюємо запрошення
-            const inviteLink = await activateUserAfterPayment(userId, username, community, telegramId);
+            const userResult = await client.query(
+                `SELECT *
+                 FROM users
+                 WHERE id = $1
+                   AND community = $2
+                 FOR UPDATE`,
+                [userId, community]
+            );
+
+            if (userResult.rows.length === 0) {
+                throw new Error(`Користувача з id=${userId} для спільноти ${community} не знайдено`);
+            }
+
+            const inviteLink = await activateUserAfterPayment(userResult.rows[0], client);
 
             await client.query('COMMIT');
 

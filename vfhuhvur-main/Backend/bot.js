@@ -2,6 +2,10 @@ const TelegramBot = require('node-telegram-bot-api');
 const { Pool } = require('pg');
 require('dotenv').config();
 
+const { GROUP_IDS, COMMUNITY_DISPLAY_NAMES, COMMUNITY_PRICES } = require('./config/communities');
+const { activateUserSubscription, findActiveSubscription } = require('./services/subscriptionService');
+const { isSubscriptionActive, toDate } = require('./utils/subscription');
+
 // Токен бота отриманий від @BotFather
 const token = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -25,25 +29,67 @@ const bot = new TelegramBot(token, {
     }
 });
 
-// ID груп для кожної спільноти
-const GROUP_IDS = {
-    nikotin: process.env.NIKOTIN_GROUP_ID,
-    food: process.env.FOOD_GROUP_ID,
-    social: process.env.SOCIAL_GROUP_ID
+const COMMUNITY_BY_GROUP_ID = Object.entries(GROUP_IDS).reduce((acc, [community, groupId]) => {
+    if (groupId) {
+        acc[groupId.toString()] = community;
+    }
+    return acc;
+}, {});
+
+const getCommunityName = (community) => COMMUNITY_DISPLAY_NAMES[community] || community;
+
+const getUserMention = (from) => {
+    if (!from) {
+        return 'друже';
+    }
+    if (from.username) {
+        return `@${from.username}`;
+    }
+    if (from.first_name) {
+        return from.first_name;
+    }
+    return 'друже';
 };
 
-// Назви спільнот для відображення
-const COMMUNITY_DISPLAY_NAMES = {
-    nikotin: '🚭 Вільні від нікотину',
-    food: '🍎 Вільні від їжі',
-    social: '💪 Вільні від думки інших'
+const getBaseUrl = () => process.env.BASE_URL || 'http://localhost:3000';
+
+const welcomeUserToCommunity = async ({ chatId, from, community }) => {
+    const communityName = getCommunityName(community);
+    const mention = getUserMention(from);
+    const message =
+        `Ласкаво просимо, ${mention}!
+\n` +
+        `Раді бачити вас у спільноті "${communityName}".
+` +
+        `Не соромтесь ділитись своїм досвідом та підтримувати інших!`;
+
+    try {
+        await bot.sendMessage(chatId, message);
+    } catch (error) {
+        console.error('❌ Не вдалося надіслати вітальне повідомлення:', error.message);
+    }
 };
 
-// Ціни для кожної спільноти
-const COMMUNITY_PRICES = {
-    nikotin: 500,
-    food: 400,
-    social: 400
+const notifyUserRemoval = async ({ telegramId, community }) => {
+    if (!telegramId) {
+        return;
+    }
+
+    const communityName = getCommunityName(community);
+    const message =
+        `⚠️ Ваш доступ до "${communityName}" завершився.
+\n` +
+        `Вас тимчасово видалено з групи.
+\n` +
+        `Продовжіть підписку, щоб повернутися: ${getBaseUrl()}
+\n` +
+        `Після оплати введіть /start у боті, щоб отримати нове запрошення.`;
+
+    try {
+        await bot.sendMessage(telegramId, message);
+    } catch (error) {
+        console.error(`❌ Не вдалося повідомити користувача ${telegramId} про видалення:`, error.message);
+    }
 };
 
 // Функція для перевірки прав бота в групах
@@ -110,9 +156,8 @@ async function createInviteLink(username, community) {
 
         // Створення одноразового посилання
         const inviteLink = await bot.createChatInviteLink(groupId, {
-            member_limit: 1,
             expire_date: Math.floor(Date.now() / 1000) + 86400, // 24 години
-            creates_join_request: false
+            creates_join_request: true
         });
 
         console.log(`✅ Одноразове посилання створено: ${inviteLink.invite_link}`);
@@ -160,13 +205,25 @@ bot.onText(/\/start/, async (msg) => {
     try {
         // Шукаємо активні підписки користувача
         const result = await pool.query(
-            `SELECT u.*, p.status as payment_status 
-             FROM users u 
-             LEFT JOIN payments p ON u.id = p.user_id 
-             WHERE (u.telegram_username = $1 OR u.telegram_id = $2) 
-             AND u.active = true AND p.status = 'completed'
-             AND u.expires > NOW()
-             ORDER BY u.joined DESC`,
+            `SELECT DISTINCT ON (u.community)
+                u.*,
+                (
+                    SELECT p.status
+                    FROM payments p
+                    WHERE p.user_id = u.id
+                    ORDER BY p.date DESC, p.id DESC
+                    LIMIT 1
+                ) AS payment_status
+             FROM users u
+             WHERE (u.telegram_username = $1 OR u.telegram_id = $2)
+               AND u.active = true
+               AND u.expires IS NOT NULL
+               AND u.expires > NOW()
+               AND EXISTS (
+                    SELECT 1 FROM payments p
+                    WHERE p.user_id = u.id AND p.status = 'completed'
+               )
+             ORDER BY u.community, u.expires DESC`,
             [username.toLowerCase(), userId.toString()]
         );
 
@@ -253,11 +310,18 @@ bot.onText(/\/check/, async (msg) => {
 
     try {
         const result = await pool.query(
-            `SELECT u.*, p.status as payment_status 
-             FROM users u 
-             LEFT JOIN payments p ON u.id = p.user_id 
+            `SELECT DISTINCT ON (u.community)
+                u.*,
+                (
+                    SELECT p.status
+                    FROM payments p
+                    WHERE p.user_id = u.id
+                    ORDER BY p.date DESC, p.id DESC
+                    LIMIT 1
+                ) AS payment_status
+             FROM users u
              WHERE (u.telegram_username = $1 OR u.telegram_id = $2)
-             ORDER BY u.joined DESC`,
+             ORDER BY u.community, u.expires DESC NULLS LAST`,
             [username.toLowerCase(), userId.toString()]
         );
 
@@ -303,20 +367,28 @@ async function cleanupExpiredSubscriptions() {
         
         // Використовуємо UTC для порівняння
         const expiredSubscriptions = await pool.query(
-            `SELECT 
+            `SELECT DISTINCT ON (COALESCE(u.telegram_id, u.telegram_username), u.community)
                 u.id,
                 u.telegram_username,
                 u.telegram_id,
                 u.community,
                 u.active,
                 u.expires,
-                p.status as payment_status
+                (
+                    SELECT p.status
+                    FROM payments p
+                    WHERE p.user_id = u.id
+                    ORDER BY p.date DESC, p.id DESC
+                    LIMIT 1
+                ) AS payment_status
              FROM users u 
-             LEFT JOIN payments p ON u.id = p.user_id 
-             WHERE u.expires AT TIME ZONE 'UTC' < NOW() AT TIME ZONE 'UTC'
+             WHERE u.expires IS NOT NULL
+             AND u.expires AT TIME ZONE 'UTC' < NOW() AT TIME ZONE 'UTC'
              AND u.active = true
-             AND p.status = 'completed'
-             ORDER BY u.expires ASC`
+             AND EXISTS (
+                 SELECT 1 FROM payments p WHERE p.user_id = u.id AND p.status = 'completed'
+             )
+             ORDER BY COALESCE(u.telegram_id, u.telegram_username), u.community, u.expires DESC`
         );
 
         console.log(`📋 Знайдено ${expiredSubscriptions.rows.length} прострочених АКТИВНИХ підписок`);
@@ -333,7 +405,7 @@ async function cleanupExpiredSubscriptions() {
             
             // Деактивуємо користувача в БД
             await pool.query(
-                'UPDATE users SET active = false, invite_link = NULL WHERE id = $1',
+                'UPDATE users SET active = false, invite_link = NULL, expiry_warning_sent = false WHERE id = $1',
                 [user.id]
             );
             console.log(`✅ Користувач @${user.telegram_username} деактивований`);
@@ -348,6 +420,7 @@ async function cleanupExpiredSubscriptions() {
                     if (removed) {
                         console.log(`✅ Користувач @${user.telegram_username} успішно видалений з групи ${user.community}`);
                         removedFromGroupCount++;
+                        await notifyUserRemoval({ telegramId: user.telegram_id, community: user.community });
                     }
                 }
             }
@@ -373,25 +446,167 @@ async function cleanupExpiredSubscriptions() {
 
 
 
+// Функція для сповіщення користувачів за хвилину до завершення підписки
+async function notifyExpiringSubscriptions() {
+    try {
+        const upcomingExpirations = await pool.query(
+            `SELECT DISTINCT ON (COALESCE(u.telegram_id, u.telegram_username), u.community)
+                u.id,
+                u.telegram_id,
+                u.telegram_username,
+                u.community,
+                u.expires,
+                EXTRACT(EPOCH FROM (u.expires AT TIME ZONE 'UTC' - NOW() AT TIME ZONE 'UTC')) AS seconds_until_expiry
+             FROM users u
+             WHERE u.active = true
+               AND u.expires IS NOT NULL
+               AND u.expires AT TIME ZONE 'UTC' > NOW() AT TIME ZONE 'UTC'
+               AND (u.expires AT TIME ZONE 'UTC' - INTERVAL '60 seconds') <= NOW() AT TIME ZONE 'UTC'
+               AND COALESCE(u.expiry_warning_sent, FALSE) = FALSE
+               AND EXISTS (
+                    SELECT 1 FROM payments p WHERE p.user_id = u.id AND p.status = 'completed'
+               )
+             ORDER BY COALESCE(u.telegram_id, u.telegram_username), u.community, u.expires DESC`
+        );
+
+        if (upcomingExpirations.rows.length === 0) {
+            return;
+        }
+
+        for (const user of upcomingExpirations.rows) {
+            if (!user.telegram_id) {
+                console.log(`⚠️ Не вдалось надіслати попередження @${user.telegram_username}: відсутній telegram_id`);
+                await pool.query(
+                    'UPDATE users SET expiry_warning_sent = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+                    [user.id]
+                );
+                continue;
+            }
+
+            const communityName = COMMUNITY_DISPLAY_NAMES[user.community] || user.community;
+            const message =
+                `⚠️ Ваш доступ до "${communityName}" завершиться через хвилину.
+Продовжіть підписку, щоб залишатися в спільноті без перерв.`;
+
+            try {
+                await bot.sendMessage(user.telegram_id, message);
+                console.log(`📣 Надіслано попередження @${user.telegram_username} (ID: ${user.telegram_id}) про завершення підписки ${user.community}`);
+            } catch (error) {
+                console.error(`❌ Не вдалося надіслати попередження користувачу ${user.telegram_id}:`, error.message);
+            }
+
+            await pool.query(
+                'UPDATE users SET expiry_warning_sent = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
+                [user.id]
+            );
+        }
+    } catch (error) {
+        console.error('❌ Помилка сповіщення про завершення підписок:', error);
+    }
+}
+// Обробка запитів на приєднання через запрошення
+async function handleChatJoinRequest(request) {
+    const chatId = request.chat.id.toString();
+    const community = COMMUNITY_BY_GROUP_ID[chatId];
+
+    if (!community) {
+        return;
+    }
+
+    const requesterId = request.from.id.toString();
+
+    try {
+        const activeSubscription = await findActiveSubscription({
+            db: pool,
+            community,
+            telegramId: requesterId
+        });
+
+        if (activeSubscription) {
+            await bot.approveChatJoinRequest(request.chat.id, request.from.id);
+            console.log(`✅ Схвалено запит на приєднання для @${request.from.username || requesterId} у спільноту ${community}`);
+            await welcomeUserToCommunity({
+                chatId: request.chat.id,
+                from: request.from,
+                community
+            });
+        } else {
+            await bot.declineChatJoinRequest(request.chat.id, request.from.id);
+            console.log(`🚫 Відхилено запит на приєднання ${requesterId} до ${community}: активна підписка відсутня`);
+        }
+    } catch (error) {
+        console.error('❌ Помилка обробки запиту на приєднання:', error.message);
+    }
+}
+
+// Контроль за станом учасників у групі
+async function handleChatMemberUpdate(update) {
+    if (!update || !update.chat) {
+        return;
+    }
+
+    const chatId = update.chat.id.toString();
+    const community = COMMUNITY_BY_GROUP_ID[chatId];
+
+    if (!community) {
+        return;
+    }
+
+    const newMember = update.new_chat_member;
+    if (!newMember || newMember.status !== 'member') {
+        return;
+    }
+
+    const memberId = newMember.user.id.toString();
+
+    try {
+        const activeSubscription = await findActiveSubscription({
+            db: pool,
+            community,
+            telegramId: memberId
+        });
+
+        if (!activeSubscription) {
+            console.log(`🚫 Користувач ${memberId} не має активної підписки для ${community}. Видаляємо...`);
+            await removeUserFromGroup(memberId, chatId);
+            await notifyUserRemoval({ telegramId: memberId, community });
+        }
+    } catch (error) {
+        console.error('❌ Помилка перевірки учасника групи:', error.message);
+    }
+}
+
+
+bot.on('chat_join_request', handleChatJoinRequest);
+bot.on('chat_member', handleChatMemberUpdate);
+
 
 // Функція для моніторингу статусу всіх активних користувачів
 async function monitorActiveUsers() {
     try {
         const activeUsers = await pool.query(
-            `SELECT 
+            `SELECT DISTINCT ON (COALESCE(u.telegram_id, u.telegram_username), u.community)
                 u.telegram_username,
                 u.telegram_id,
                 u.community,
                 u.active,
                 u.expires,
-                p.status as payment_status,
-                u.expires AT TIME ZONE 'UTC' < NOW() AT TIME ZONE 'UTC' as is_expired,
-                EXTRACT(EPOCH FROM (u.expires AT TIME ZONE 'UTC' - NOW() AT TIME ZONE 'UTC')) as seconds_until_expiry
+                (
+                    SELECT p.status
+                    FROM payments p
+                    WHERE p.user_id = u.id
+                    ORDER BY p.date DESC, p.id DESC
+                    LIMIT 1
+                ) AS payment_status,
+                EXTRACT(EPOCH FROM (u.expires AT TIME ZONE 'UTC' - NOW() AT TIME ZONE 'UTC')) AS seconds_until_expiry,
+                COALESCE(u.expiry_warning_sent, FALSE) AS expiry_warning_sent
              FROM users u 
-             LEFT JOIN payments p ON u.id = p.user_id 
              WHERE u.active = true
-             AND p.status = 'completed'
-             ORDER BY u.expires ASC`
+             AND u.expires IS NOT NULL
+             AND EXISTS (
+                SELECT 1 FROM payments p WHERE p.user_id = u.id AND p.status = 'completed'
+             )
+             ORDER BY COALESCE(u.telegram_id, u.telegram_username), u.community, u.expires DESC`
         );
         
         if (activeUsers.rows.length > 0) {
@@ -399,12 +614,17 @@ async function monitorActiveUsers() {
             console.log(`⏰ Поточний UTC: ${new Date().toISOString()}`);
             
             activeUsers.rows.forEach(user => {
-                const status = user.is_expired ? '❌ ПРОСТРОЧЕНО' : '✅ АКТИВНИЙ';
+                const status = isSubscriptionActive(user.expires) ? '✅ АКТИВНИЙ' : '❌ ПРОСТРОЧЕНО';
+                const secondsLeftRaw = parseFloat(user.seconds_until_expiry);
+                const secondsLeft = Number.isFinite(secondsLeftRaw)
+                    ? Math.max(0, Math.floor(secondsLeftRaw))
+                    : 'N/A';
                 console.log(`   @${user.telegram_username} - ${user.community}`);
                 console.log(`     Статус: ${status}`);
                 console.log(`     Час закінчення UTC: ${user.expires}`);
-                console.log(`     Секунд до закінчення: ${Math.floor(user.seconds_until_expiry)}`);
+                console.log(`     Секунд до закінчення: ${secondsLeft}`);
                 console.log(`     Telegram ID: ${user.telegram_id}`);
+                console.log(`     Попередження надіслано: ${user.expiry_warning_sent}`);
             });
         } else {
             console.log('👀 МОНІТОРИНГ: Немає активних користувачів');
@@ -416,6 +636,9 @@ async function monitorActiveUsers() {
 
 // Моніторимо кожні 5 секунд
 setInterval(monitorActiveUsers, 5 * 1000);
+
+// Сповіщаємо про завершення підписки кожні 5 секунд
+setInterval(notifyExpiringSubscriptions, 5 * 1000);
 
 
 
@@ -468,11 +691,13 @@ async function removeExpiredUsersFromGroups() {
         const expiredUsers = await pool.query(
             `SELECT DISTINCT u.telegram_id, u.telegram_username, u.community 
              FROM users u 
-             LEFT JOIN payments p ON u.id = p.user_id 
              WHERE u.active = false 
-             AND p.status = 'completed'
+             AND u.expires IS NOT NULL
              AND u.expires < NOW()
-             AND u.telegram_id IS NOT NULL`
+             AND u.telegram_id IS NOT NULL
+             AND EXISTS (
+                SELECT 1 FROM payments p WHERE p.user_id = u.id AND p.status = 'completed'
+             )`
         );
 
         console.log(`📋 Знайдено ${expiredUsers.rows.length} користувачів для видалення з груп`);
@@ -491,6 +716,7 @@ async function removeExpiredUsersFromGroups() {
             
             if (removed) {
                 console.log(`✅ Користувач @${user.telegram_username} успішно видалений з групи ${user.community}`);
+                await notifyUserRemoval({ telegramId: user.telegram_id, community: user.community });
             }
         }
     } catch (error) {
@@ -502,12 +728,22 @@ async function removeExpiredUsersFromGroups() {
 async function getUserInfo(username) {
     try {
         const result = await pool.query(
-            `SELECT u.*, p.status as payment_status 
+            `SELECT u.*,
+                    (
+                        SELECT p.status
+                        FROM payments p
+                        WHERE p.user_id = u.id
+                        ORDER BY p.date DESC, p.id DESC
+                        LIMIT 1
+                    ) AS payment_status
              FROM users u 
-             LEFT JOIN payments p ON u.id = p.user_id 
-             WHERE u.telegram_username = $1 AND u.active = true AND p.status = 'completed'
-             AND u.expires > NOW()
-             ORDER BY u.joined DESC LIMIT 1`,
+             WHERE u.telegram_username = $1 AND u.active = true
+               AND u.expires IS NOT NULL AND u.expires > NOW()
+               AND EXISTS (
+                    SELECT 1 FROM payments p WHERE p.user_id = u.id AND p.status = 'completed'
+               )
+             ORDER BY u.expires DESC
+             LIMIT 1`,
             [username.toLowerCase()]
         );
         return result.rows.length > 0 ? result.rows[0] : null;
@@ -516,7 +752,6 @@ async function getUserInfo(username) {
         return null;
     }
 }
-
 async function debugExpiredUsers() {
     try {
         console.log('🔍 ДЕТАЛЬНА ПЕРЕВІРКА СТАНУ:');
@@ -529,12 +764,19 @@ async function debugExpiredUsers() {
                 u.community, 
                 u.active, 
                 u.expires,
-                p.status as payment_status,
-                u.expires AT TIME ZONE 'UTC' < NOW() AT TIME ZONE 'UTC' as is_expired_utc
+                (
+                    SELECT p.status
+                    FROM payments p
+                    WHERE p.user_id = u.id
+                    ORDER BY p.date DESC, p.id DESC
+                    LIMIT 1
+                ) AS payment_status,
+                u.expires AT TIME ZONE 'UTC' < NOW() AT TIME ZONE 'UTC' AS is_expired_utc
              FROM users u 
-             LEFT JOIN payments p ON u.id = p.user_id 
-             WHERE p.status = 'completed'
-             ORDER BY u.active DESC, u.expires ASC`
+             WHERE EXISTS (
+                SELECT 1 FROM payments p WHERE p.user_id = u.id AND p.status = 'completed'
+             )
+             ORDER BY u.active DESC, u.expires ASC NULLS LAST`
         );
         
         console.log(`👥 ВСІ КОРИСТУВАЧІ З ОПЛАТОЮ: ${allUsers.rows.length}`);
@@ -563,43 +805,33 @@ setInterval(debugExpiredUsers, 30 * 1000);
 async function activateUserAfterPayment(userId, telegramUsername, community, telegramId) {
     try {
         console.log(`🎯 Активація користувача @${telegramUsername}, telegram_id: ${telegramId}`);
-        
-        // Створюємо час в UTC явно
-        const now = new Date();
-        const expires = new Date(now.getTime() + 30 * 1000); // 30 секунд для тесту
-        
-        // Форсуємо UTC представлення
-        const expiresUTC = new Date(expires.toISOString());
-        
-        console.log(`⏰ Поточний UTC: ${now.toISOString()}`);
-        console.log(`⏰ Час закінчення UTC: ${expiresUTC.toISOString()}`);
 
-        // Створюємо запрошення
-        const inviteResult = await createInviteLink(telegramUsername, community);
-        
-        let inviteLink = null;
-        if (inviteResult.success) {
-            inviteLink = inviteResult.inviteLink;
-        } else {
-            console.error(`❌ Не вдалося створити запрошення для @${telegramUsername}:`, inviteResult.error);
+        const existingUser = await pool.query(
+            `SELECT id, expires, invite_link
+             FROM users
+             WHERE id = $1`,
+            [userId]
+        );
+
+        if (existingUser.rows.length === 0) {
+            throw new Error(`Користувача з id=${userId} не знайдено`);
         }
 
-        // Оновлюємо користувача з UTC часом
-        const result = await pool.query(
-            `UPDATE users 
-             SET active = true, expires = $1, invite_link = $2, 
-                 telegram_id = $3, updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $4
-             RETURNING *`,
-            [expiresUTC, inviteLink, telegramId, userId]
-        );
-        
-        console.log(`✅ Користувач ${telegramUsername} активовано до ${expiresUTC.toISOString()} (UTC), telegram_id: ${telegramId}`);
-        
+        const activationResult = await activateUserSubscription({
+            db: pool,
+            user: existingUser.rows[0],
+            community,
+            telegramUsername,
+            telegramId,
+            inviteLinkProvider: () => createInviteLink(telegramUsername, community)
+        });
+
+        console.log(`✅ Користувач ${telegramUsername} активовано до ${activationResult.expiresAt.toISOString()} (UTC), telegram_id: ${telegramId}`);
+
         // Оновлюємо моніторинг
         setTimeout(monitorActiveUsers, 1000);
-        
-        return inviteLink;
+
+        return activationResult.inviteLink;
 
     } catch (error) {
         console.error('❌ Помилка активації користувача:', error);
@@ -646,6 +878,9 @@ setInterval(cleanupExpiredSubscriptions, 10 * 1000);
 
 // Запускаємо очищення при старті
 setTimeout(cleanupExpiredSubscriptions, 5000);
+
+// Перевіряємо підписки, що скоро завершаться, після запуску
+setTimeout(notifyExpiringSubscriptions, 2000);
 
 // Ініціалізація бота
 async function initializeBot() {
