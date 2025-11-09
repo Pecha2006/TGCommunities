@@ -989,7 +989,7 @@ bot.onText(/\/start$/, async (msg) => {
 // Запускаємо ініціалізацію
 setTimeout(initializeBot, 2000);
 
-// Експортуємо функції для використання в серверній частині
+// Експортуємо функції для використання у серверній частині
 module.exports = {
     bot,
     createInviteLink,
