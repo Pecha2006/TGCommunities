@@ -67,11 +67,19 @@
     <!-- Спільнота 1 -->
     <div id="nikotin" class="community-card">
         <div class="card-header text-center">
-            <h3 class="mb-0">Вільні – Залежні від нікотину</h3>
-            <h4 class="mb-0">Закрита спільнота в Telegram</h4>
+            <div class="d-flex justify-content-between align-items-center">
+                <div style="width: 40px;"></div>
+                <div>
+                    <h3 class="mb-0">Вільні – Залежні від нікотину</h3>
+                    <h4 class="mb-0">Закрита спільнота в Telegram</h4>
+                </div>
+                <button class="btn btn-link text-white p-0" onclick="openCommunityTerms()" style="width: 40px;">
+                    <i class="fas fa-info-circle fa-lg"></i>
+                </button>
+            </div>
         </div>
         <div class="card-body">
-            <h5 class="text-center">З чим приходять:</h5>
+            <h5 class="text-center">З чим приходимо:</h5>
             <div class="icon-container">
                 <div class="icon-item">
                     <div>Покидав багато разів, але знову повертаюсь</div>
@@ -96,7 +104,7 @@
                 </div>
             </div>
 
-            <h5 class="text-center">Що отримують:</h5>
+            <h5 class="text-center">Що отримуємо:</h5>
             <div class="icon-container">
                 <div class="icon-item">
                     <div>Підтримку в критичні моменти</div>
@@ -128,21 +136,28 @@
             </div>
 
             <div class="price-tag">
-                <span class="old-price">700 грн./міс.</span>
-                <span>500 грн./міс.</span>
+                <span>800 грн./міс.</span>
             </div>
-            <button class="btn btn-join" onclick="showPaymentConfirmation('nikotin', 500)">Приєднатися</button>
+            <button class="btn btn-join" onclick="showPaymentConfirmation('nikotin', 800)">Приєднатися</button>
         </div>
     </div>
 
     <!-- Спільнота 2 -->
     <div id="food" class="community-card">
         <div class="card-header text-center">
-            <h3 class="mb-0">Вільні – Залежні від їжі</h3>
-            <h4 class="mb-0">Закрита спільнота в Telegram</h4>
+            <div class="d-flex justify-content-between align-items-center">
+                <div style="width: 40px;"></div>
+                <div>
+                    <h3 class="mb-0">Вільні – Залежні від їжі</h3>
+                    <h4 class="mb-0">Закрита спільнота в Telegram</h4>
+                </div>
+                <button class="btn btn-link text-white p-0" onclick="openCommunityTerms()" style="width: 40px;">
+                    <i class="fas fa-info-circle fa-lg"></i>
+                </button>
+            </div>
         </div>
         <div class="card-body">
-            <h5 class="text-center">З чим приходять:</h5>
+            <h5 class="text-center">З чим приходимо:</h5>
             <div class="icon-container">
                 <div class="icon-item">
                     <div>Неконтрольоване бажання поїсти</div>
@@ -164,7 +179,7 @@
                 </div>
             </div>
 
-            <h5 class="text-center">Щo отримують:</h5>
+            <h5 class="text-center">Що отримуємо:</h5>
             <div class="icon-container">
                 <div class="icon-item">
                     <div>Безпечне середовище, де можна чесно визнати свою залежність та розповісти про неї</div>
@@ -193,21 +208,28 @@
             </div>
 
             <div class="price-tag">
-                <span class="old-price">600 грн./міс.</span>
-                <span>400 грн./міс.</span>
+                <span>600 грн./міс.</span>
             </div>
-            <button class="btn btn-join" onclick="showPaymentConfirmation('food', 400)">Приєднатися</button>
+            <button class="btn btn-join" onclick="showPaymentConfirmation('food', 600)">Приєднатися</button>
         </div>
     </div>
 
     <!-- Спільнота 3 -->
     <div id="social" class="community-card">
         <div class="card-header text-center">
-            <h3 class="mb-0">Вільні – Залежні від думки інших</h3>
-            <h4 class="mb-0">Закрита спільнота в Telegram</h4>
+            <div class="d-flex justify-content-between align-items-center">
+                <div style="width: 40px;"></div>
+                <div>
+                    <h3 class="mb-0">Вільні – Залежні від думки інших</h3>
+                    <h4 class="mb-0">Закрита спільнота в Telegram</h4>
+                </div>
+                <button class="btn btn-link text-white p-0" onclick="openCommunityTerms()" style="width: 40px;">
+                    <i class="fas fa-info-circle fa-lg"></i>
+                </button>
+            </div>
         </div>
         <div class="card-body">
-            <h5 class="text-center">З чим приходять:</h5>
+            <h5 class="text-center">З чим приходимо:</h5>
             <div class="icon-container">
                 <div class="icon-item">
                     <div>Відчуття невпевненості у разі критики, або якщо мої дії не схвалюють оточуючі</div>
@@ -229,7 +251,7 @@
                 </div>
             </div>
 
-            <h5 class="text-center">Що отримують:</h5>
+            <h5 class="text-center">Що отримуємо:</h5>
             <div class="icon-container">
                 <div class="icon-item">
                     <div>Простір в якому можна розповісти про свої страхи</div>
@@ -251,10 +273,9 @@
                 </div>
             </div>
             <div class="price-tag">
-                <span class="old-price">600 грн./міс.</span>
-                <span>400 грн./міс.</span>
+                <span>600 грн./міс.</span>
             </div>
-            <button class="btn btn-join" onclick="showPaymentConfirmation('social', 400)">Приєднатися</button>
+            <button class="btn btn-join" onclick="showPaymentConfirmation('social', 600)">Приєднатися</button>
         </div>
     </div>
 </div>
@@ -263,11 +284,12 @@
 <footer class="footer">
     <div class="container">
         <div class="footer-links">
-            <a href="#">Контакти</a>
+            <a href="#" data-bs-toggle="modal" data-bs-target="#contactsModal">Контакти</a>
             <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Умови участі в спільноті</a>
+            <a href="documents/politica_conf.pdf" target="_blank">Політика конфіденційності</a>
         </div>
         <div class="footer-links">
-            <a href="#">Повернутись на початок</a>
+            <a href="#" id="backToTopLink">Повернутись на початок</a>
         </div>
         <div class="copyright">
             <p>&copy; 2025 Вільні - Залежні. Всі права захищені.</p>
@@ -275,26 +297,73 @@
     </div>
 </footer>
 
-<!-- Модальне вікно з умовами використання -->
 <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content" style="border-radius: 15px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="termsModalLabel">
+                    <i class="fas fa-users me-2"></i>Умови участі в спільноті
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
             <div class="modal-body terms-body">
-                <p><b>1.</b> Допуск до спільноти надається протягом 15-30 хв. з 9.00 год. ранку до 20.00 год. вечора. У разі якщо проплата здійснена за межами вказаного часового проміжку, допуск надається з наступної 9.00 год. ранку протягом 15-30 хв. Відрахунок днів починається з моменту надання допуску до спільноти.</p>
-                <p><b>2.</b> Оплата відбувається за 31 день участі у спільноті. Напередодні закінчення зазначеного терміну, надсилається нагадування про можливість проплати на наступний період. У разі відмови, на 32 день учасник (та його контакти) видаляється зі спільноти, без будь-яких подальших пропозицій, інформаційних листів, рекламных повідомлень.</p>
-                <p><b>3.</b> Обов'язковим є ввічливе спілкування, без переходу на особистості, без хамських коментарів, без насмішок та принижень.</p>
-                <p><b>4.</b> В спільноті не обговорюється війна між росією та Україною, політична ситуація в країні, політичні вподобання, віросповідання, гендерність, сексуальна ідентичність.</p>
-                <p><b>5.</b> Заборонена дискримінація на ґрунті расової або етнічної приналежності.</p>
-                <p><b>6.</b> Заборонено розміщувати будь-яку рекламу, без узгодження з Адміністратором спільноти.</p>
-                <p><b>7.</b> Заборонено надавати будь-які консультації щодо прийому лікарських засобів.</p>
-                <p><b>8.</b> Не розміщуються ніякі посилання на сайти, відео з youtube, tiktok, instagram, facebook, які є у загальному доступі в інтернет-мережі.</p>
-                <p><b>9.</b> Мова спілкування бажано українська, допускається суржик (куди ж без нього), «червоне» слівце може бути прийнятним для вираження емоції.</p>
-                <p><b>10.</b> Дописи та посилання, що суперечать умовам участі у спільноті, видаляються Адміністратором без попередніх обговорень і попереджень.</p>
-                <p><b>11.</b> У разі системного порушення правил, і відсутності реагування на зауваження Адміністратора, учасник видаляється із спільноти без повернення сплачених коштів.</p>
-                <p><b>12.</b> У випадку наміру покинути спільноту раніше сплаченого терміну кошти не повертаються.</p>
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Правила приєднання до закритої спільноти в Telegram</strong>
+                </div>
+
+                <h6>1. Як приєднатись до спільноти, покроково:</h6>
+                <ol>
+                    <li>Натисніть кнопку "Приєднатися" під обраною спільнотою</li>
+                    <li>Заповніть форму з вашим Telegram username та номером телефону</li>
+                    <li>Погодьтесь з договором публічної оферти</li>
+                    <li>Оплатіть підписку через платіжну систему</li>
+                    <li>Після успішної оплати ви отримаєте посилання для приєднання до закритої Telegram-спільноти</li>
+                    <li>Перейдіть за посиланням та приєднайтесь до спільноти</li>
+                </ol>
+
+                <h6 class="mt-4">2. Умови підписки:</h6>
+                <p>Оплата відбувається за 30 днів участі у спільноті. Відрахунок днів починається з моменту приєднання до спільноти.</p>
+
+                <h6 class="mt-4">3. Продовження підписки:</h6>
+                <p>За три дні та напередодні до закінчення терміну підписки надсилаються повідомлення з нагадування про можливість проплати на наступний період. У разі відмови, на 31 день учасник (та його контакти) видаляється зі спільноти, без будь-яких подальших пропозицій, інформаційних листів, рекламних повідомлень.</p>
+
+                <h6 class="mt-4">4. Правила спілкування:</h6>
+                <ul>
+                    <li>Обов'язковим є ввічливе спілкування, без переходу на особистості, без хамських коментарів, без насмішок та принижень</li>
+                    <li>Утримуватись від обговорення війни, політичної ситуації в країні, політичних вподобань, віросповідання, гендерності, сексуальної ідентичності</li>
+                    <li>Заборонена дискримінація на ґрунті расової або етнічної приналежності</li>
+                    <li>Заборонено розміщувати будь-яку рекламу, без узгодження з Адміністратором спільноти</li>
+                    <li>Заборонено надавати будь-які консультації щодо прийому лікарських засобів</li>
+                </ul>
+
+                <h6 class="mt-4">5. Контент та дії:</h6>
+                <ul>
+                    <li>Утримуватись від інших дій, не передбачених цими правилами, але таких, що містять склад кримінального чи адміністративного правопорушення, або порушують права інших учасників</li>
+                    <li>Не розміщуються ніякі посилання на сайти, відео з YouTube, TikTok, Instagram, Facebook, які є у загальному доступі в інтернет-мережі</li>
+                    <li>Заборонено копіювати, повторювати, продавати, розповсюджувати, а також використовувати з будь-якою іншою метою Контент, який став доступний приєднавшись до спільноти</li>
+                </ul>
+
+                <h6 class="mt-4">6. Модерація та правопорушення:</h6>
+                <ul>
+                    <li>Дописи та посилання, що суперечать умовам участі у спільноті, видаляються Адміністратором без попередніх обговорень і попереджень</li>
+                    <li>У разі системного порушення правил, і відсутності реагування на зауваження Адміністратора, учасник може бути видалений із спільноти без повернення сплачених коштів</li>
+                </ul>
+
+                <h6 class="mt-4">7. Повернення коштів:</h6>
+                <ul>
+                    <li>У випадку наміру покинути спільноту раніше сплаченого терміну кошти не повертаються</li>
+                    <li>У разі неможливості або відмови приєднатися до спільноти протягом 24 годин з моменту надходження коштів на рахунок (особа не скористалась жодним із наданих способів щоб приєднатися до спільноти) потрібно зв'язатися з Адміністратором за контактним телефоном, вказаним на даному веб-сайті, протягом 24 годин з моменту оплати. Обов'язкова наявність підтвердження проведеної оплати. Кошти повертаються протягом 14 днів</li>
+                </ul>
+
+                <div class="mt-4 p-3 bg-light rounded">
+                    <p class="mb-0 text-center">
+                        <small><strong>Важливо:</strong> Приєднуючись до спільноти, ви автоматично погоджуєтесь з усіма вищевказаними правилами.</small>
+                    </p>
+                </div>
             </div>
             <div class="modal-footer" style="border-top: 1px solid var(--secondary-color);">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Зрозуміло</button>
             </div>
         </div>
     </div>
@@ -353,9 +422,15 @@
                 <div class="form-check mb-4 payment-checkbox">
                     <input class="form-check-input" type="checkbox" value="" id="agreeTermsCheckbox">
                     <label class="form-check-label" for="agreeTermsCheckbox">
-                        Я ознайомився/лась з <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal" onclick="$('#paymentConfirmationModal').modal('hide')">умовами участі в спільноті</a> та погоджуюся з ними
+                        Я ознайомився/лась з <a href="documents/offer_agreement.pdf" target="_blank">договором публічної оферти</a> та погоджуюся з ним
                     </label>
                 </div>
+                <div class="form-check mb-4 payment-checkbox">
+                    <input class="form-check-input" type="checkbox" value="" id="agreeTermsCheckbox">
+                    <label class="form-check-label" for="agreeTermsCheckbox">
+                        Я ознайомився/лась з <a href="documents/politica_conf.pdf" target="_blank">політикакою конфіденційності</a> та погоджуюся з ним
+                    </label>
+                    </div>
 
                 <div class="text-center">
                     <button type="button" class="btn payment-confirm-btn" id="proceedPaymentBtn" onclick="proceedToPayment()" disabled>
@@ -366,7 +441,77 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="communityFormatModal" tabindex="-1" aria-labelledby="communityFormatModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 15px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="communityFormatModalLabel">
+                    <i class="fas fa-comments me-2"></i>Формат спілкування
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body terms-body">
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Формат спілкування у спільнотах "Вільні - Залежні"</strong>
+                </div>
 
+                <ol class="format-list">
+                    <li>При бажанні можна розповісти про свою залежність, свою історію.</li>
+                    <li>Періодично Адміністратором пропонуються теми для обговорення.</li>
+                    <li>У разі прийняття рішення боротись із залежністю - підтримка один одного.</li>
+                    <li>Можливе створення певної форми, де зазначатимуться результати тощо.</li>
+                    <li>Обговорення будь-яких питань пов'язаних із залежністю.</li>
+                    <li>Допускається мовчазна участь.</li>
+                    <li>Питання та відповіді один одному.</li>
+                    <li>Учасники можуть ініціювати Адміністратору підняття будь-якої теми, що стосується залежності.</li>
+                    <li>Задля уникнення засмічення стрічки забороняється перепощення будь-яких зображень, відео, публікацій, статей, що знаходяться у вільному доступі в мережі інтернет.</li>
+                    <li>Не допускається рекламування будь-яких медичних препаратів, медичних установ.</li>
+                </ol>
+
+                <div class="mt-4 p-3 bg-light rounded">
+                    <p class="mb-0 text-center">
+                        <small><strong>Мета:</strong> Створення комфортного середовища для взаємодопомоги та подолання залежностей</small>
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid var(--secondary-color);">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Зрозуміло</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="contactsModal" tabindex="-1" aria-labelledby="contactsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 15px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="contactsModalLabel">
+                    <i class="fas fa-address-book me-2"></i>Контакти
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <i class="fas fa-user-tie fa-3x text-primary mb-3"></i>
+                    <h4>ФОП Самолудченко Микита Сергійович</h4>
+                    <div class="contact-info mt-4">
+                        <p class="mb-3">
+                            <i class="fas fa-envelope me-2 text-primary"></i>
+                            <strong>e-mail:</strong> vilni.zalezhni1@gmail.com
+                        </p>
+                        <p class="mb-0">
+                            <i class="fas fa-phone me-2 text-primary"></i>
+                            <strong>тел.:</strong> +38(093)517-71-82
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Закрити</button>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
